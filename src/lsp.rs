@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use tower_lsp::lsp_types::{
     DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, InitializeParams,
     InitializeResult, InitializedParams, MarkedString, MessageType, ServerCapabilities, ServerInfo,
@@ -7,8 +9,11 @@ use tower_lsp::lsp_types::{
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
+use crate::analysis;
+
 struct Backend {
     client: Client,
+    analysis: Mutex<analysis::State>,
 }
 
 #[tower_lsp::async_trait]
@@ -41,7 +46,7 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let text = params.text_document.text;
-        self.client.show_message(MessageType::INFO, text).await;
+        self.analysis.lock().unwrap().update_text(&text);
     }
 
     async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
@@ -56,6 +61,9 @@ pub async fn run_stdio() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        analysis: Default::default(),
+    });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
