@@ -12,6 +12,13 @@ impl State {
     pub fn update_text(&mut self, new_text: &str) {
         self.lines = new_text.lines().map(ToOwned::to_owned).collect();
     }
+
+    pub fn all_diagnostics(&self) -> impl Iterator<Item=String> {
+        vec![
+            "Hello".to_owned(),
+            "World".to_owned(),
+        ].into_iter()
+    }
 }
 
 impl Default for State {
