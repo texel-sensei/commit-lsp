@@ -11,5 +11,5 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Action {
     Run,
-    Check{ file: PathBuf },
+    Check { file: PathBuf },
 }

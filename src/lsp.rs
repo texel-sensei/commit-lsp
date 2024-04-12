@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tower_lsp::lsp_types::{
     DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, InitializeParams,
     InitializeResult, InitializedParams, MarkedString, MessageType, ServerCapabilities, ServerInfo,
-    TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncCapability, TextDocumentSyncKind, DidChangeTextDocumentParams,
 };
 
 use tower_lsp::jsonrpc::Result;
@@ -46,7 +46,29 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let text = params.text_document.text;
-        self.analysis.lock().unwrap().update_text(&text);
+
+        let diags;
+        {
+            let mut analysis = self.analysis.lock().unwrap();
+
+            analysis.update_text(&text);
+            diags = analysis.all_diagnostics().into_iter().map(|d| d.into()).collect();
+        }
+        self.client.publish_diagnostics(params.text_document.uri, diags, None).await;
+    }
+
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let text = &params.content_changes.first().expect("expected to get full document").text;
+
+        let diags;
+        {
+            let mut analysis = self.analysis.lock().unwrap();
+
+            analysis.update_text(&text);
+            diags = analysis.all_diagnostics().into_iter().map(|d| d.into()).collect();
+        }
+        self.client.publish_diagnostics(params.text_document.uri, diags, None).await;
+
     }
 
     async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
