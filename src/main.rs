@@ -8,7 +8,7 @@ mod cli;
 mod lsp;
 
 #[tokio::main]
-async fn main() -> ExitCode{
+async fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match cli.action {

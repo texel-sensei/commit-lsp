@@ -1,9 +1,9 @@
 use std::sync::Mutex;
 
 use tower_lsp::lsp_types::{
-    DidOpenTextDocumentParams, Hover, HoverContents, HoverParams, InitializeParams,
-    InitializeResult, InitializedParams, MarkedString, MessageType, ServerCapabilities, ServerInfo,
-    TextDocumentSyncCapability, TextDocumentSyncKind, DidChangeTextDocumentParams,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams,
+    InitializeParams, InitializeResult, InitializedParams, MarkedString, MessageType,
+    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions, CompletionParams, CompletionResponse, CompletionItem,
 };
 
 use tower_lsp::jsonrpc::Result;
@@ -25,6 +25,13 @@ impl LanguageServer for Backend {
                     TextDocumentSyncKind::FULL,
                 )),
                 hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(true)),
+                completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
+                    resolve_provider: Some(false),
+                    trigger_characters: Some(vec!["#".to_owned()]),
+                    all_commit_characters: None,
+                    work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
+                    completion_item: None,
+                }),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -52,23 +59,38 @@ impl LanguageServer for Backend {
             let mut analysis = self.analysis.lock().unwrap();
 
             analysis.update_text(&text);
-            diags = analysis.all_diagnostics().into_iter().map(|d| d.into()).collect();
+            diags = analysis
+                .all_diagnostics()
+                .into_iter()
+                .map(|d| d.into())
+                .collect();
         }
-        self.client.publish_diagnostics(params.text_document.uri, diags, None).await;
+        self.client
+            .publish_diagnostics(params.text_document.uri, diags, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let text = &params.content_changes.first().expect("expected to get full document").text;
+        let text = &params
+            .content_changes
+            .first()
+            .expect("expected to get full document")
+            .text;
 
         let diags;
         {
             let mut analysis = self.analysis.lock().unwrap();
 
             analysis.update_text(&text);
-            diags = analysis.all_diagnostics().into_iter().map(|d| d.into()).collect();
+            diags = analysis
+                .all_diagnostics()
+                .into_iter()
+                .map(|d| d.into())
+                .collect();
         }
-        self.client.publish_diagnostics(params.text_document.uri, diags, None).await;
-
+        self.client
+            .publish_diagnostics(params.text_document.uri, diags, None)
+            .await;
     }
 
     async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
@@ -76,6 +98,21 @@ impl LanguageServer for Backend {
             contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
             range: None,
         }))
+    }
+
+    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+        Ok(Some(CompletionResponse::Array(vec![
+            CompletionItem {
+                label: "#12345".to_owned(),
+                detail: Some("Implement completions".to_owned()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "#56789".to_owned(),
+                detail: Some("Do autocomplete stuff".to_owned()),
+                ..Default::default()
+            }
+        ])))
     }
 }
 
