@@ -7,5 +7,9 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
+reqwest = { version = "0.12.3", features = ["json"] }
+secure-string = "0.3.0"
+serde = "1.0.197"
+serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["full"] }
 tower-lsp = "0.20.0"

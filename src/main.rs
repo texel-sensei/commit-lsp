@@ -5,6 +5,7 @@ use cli::Cli;
 
 pub mod analysis;
 mod cli;
+pub mod issue_tracker;
 mod lsp;
 
 #[tokio::main]

@@ -17,12 +17,12 @@ planned but not yet implemented (❌):
 - ❌ Style checking if the commit follows the conventional commit format
 - ❌ Autocompletion for commit types and scopes with project specific config
     - Never guess again if your team uses `doc` or `docs` for documentation commits
-- ❌ Autocompletion for work item references
+- 🚧 Autocompletion for work item references
     - commit-lsp queries for Issues/Tickets/Work Items assigned to your local git user
       and provides completion for those assigned to you
     - Support for:
         - ❌ github
-        - ❌ AzureDevOps
+        - 🚧 AzureDevOps
         - ❌ gitlab
 
 ## Editor integration
@@ -52,3 +52,23 @@ if vim.fn.executable("commit-lsp") == 1 then
 end
 
 ```
+
+## Connecting to Azure DevOps
+
+The issue tracker integration is still very bare bones and work in progress.
+
+Currently only AzureDevOps is supported.
+To enable this integration, set the following environment variables:
+
+- **COMMIT_LSP_AZURE_ORG** Name of the Azure organization
+- **COMMIT_LSP_AZURE_PROJECT** Project inside of the organization
+- **COMMIT_LSP_CREDENTIAL_COMMAND** Shell command used to acquire a Personal Access Token.
+
+If all variables are set, then commit-lsp will run the command defined in `COMMIT_LSP_CREDENTIAL_COMMAND`
+This command should print a Personal Access Token (PAT) to stdout.
+The PAT must have Work Item `Read` access.
+
+There is no quoting, currently only a simple split at white space is performed.
+An example command could look like this:
+
+    export COMMIT_LSP_CREDENTIAL_COMMAND="pass show development/azure"

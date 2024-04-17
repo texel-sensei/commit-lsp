@@ -1,19 +1,25 @@
-use std::sync::Mutex;
+use std::process::Command;
+use std::sync::{Arc, Mutex};
 
 use tower_lsp::lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover, HoverContents, HoverParams,
-    InitializeParams, InitializeResult, InitializedParams, MarkedString, MessageType,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions, CompletionParams, CompletionResponse, CompletionItem,
+    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, Documentation, Hover, HoverContents,
+    HoverParams, InitializeParams, InitializeResult, InitializedParams, MarkedString,
+    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
+    WorkDoneProgressOptions,
 };
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use crate::analysis;
+use crate::issue_tracker::AzureDevops;
 
 struct Backend {
     client: Client,
     analysis: Mutex<analysis::State>,
+    tracker: Option<Arc<AzureDevops>>,
+    items: Arc<Mutex<Vec<(i64, (String, String))>>>,
 }
 
 #[tower_lsp::async_trait]
@@ -29,7 +35,9 @@ impl LanguageServer for Backend {
                     resolve_provider: Some(false),
                     trigger_characters: Some(vec!["#".to_owned()]),
                     all_commit_characters: None,
-                    work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
+                    work_done_progress_options: WorkDoneProgressOptions {
+                        work_done_progress: None,
+                    },
                     completion_item: None,
                 }),
                 ..Default::default()
@@ -42,9 +50,14 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .show_message(MessageType::INFO, "server initialized!")
-            .await;
+        if let Some(tracker) = &self.tracker {
+            let tracker = tracker.clone();
+            let items = self.items.clone();
+            tokio::spawn(async move {
+                let resolved = tracker.get_work_items().await;
+                *items.lock().unwrap() = resolved;
+            });
+        }
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -101,18 +114,25 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
-        Ok(Some(CompletionResponse::Array(vec![
-            CompletionItem {
-                label: "#12345".to_owned(),
-                detail: Some("Implement completions".to_owned()),
+        let items: Vec<_> = self
+            .items
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, (title, desc))| CompletionItem {
+                label: format!("#{id}"),
+                kind: Some(CompletionItemKind::REFERENCE),
+                detail: Some(title.clone()),
+                documentation: Some(Documentation::String(desc.clone())),
                 ..Default::default()
-            },
-            CompletionItem {
-                label: "#56789".to_owned(),
-                detail: Some("Do autocomplete stuff".to_owned()),
-                ..Default::default()
-            }
-        ])))
+            })
+            .collect();
+
+        if items.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(CompletionResponse::Array(items)))
     }
 }
 
@@ -123,6 +143,25 @@ pub async fn run_stdio() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         analysis: Default::default(),
+        tracker: initialize_issue_tracker().map(Arc::new),
+        items: Default::default(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
+}
+
+fn initialize_issue_tracker() -> Option<AzureDevops> {
+    let organization = std::env::var("COMMIT_LSP_AZURE_ORG").ok()?;
+    let project = std::env::var("COMMIT_LSP_AZURE_PROJECT").ok()?;
+    let cred_command = std::env::var("COMMIT_LSP_CREDENTIAL_COMMAND").ok()?;
+    let pat = {
+        let cmdline: Vec<&str> = cred_command.split_whitespace().collect();
+        let (cmd, args) = cmdline.split_first()?;
+
+        let out = Command::new(cmd).args(args).output();
+        String::from_utf8(out.unwrap().stdout)
+            .unwrap()
+            .trim()
+            .into()
+    };
+    Some(AzureDevops::new(pat, organization, project))
 }
