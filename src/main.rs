@@ -8,6 +8,8 @@ mod cli;
 pub mod issue_tracker;
 mod lsp;
 
+pub mod text_util;
+
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();

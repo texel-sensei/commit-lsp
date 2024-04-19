@@ -3,10 +3,10 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 
 use tower_lsp::lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, Documentation, Hover, HoverContents,
-    HoverParams, InitializeParams, InitializeResult, InitializedParams, MarkedString,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
+    CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionParams,
+    CompletionResponse, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Documentation,
+    Hover, HoverContents, HoverParams, InitializeParams, InitializeResult, InitializedParams,
+    MarkedString, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
     WorkDoneProgressOptions,
 };
 
@@ -15,6 +15,7 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use crate::analysis;
 use crate::issue_tracker::AzureDevops;
+use crate::text_util::Ellipse as _;
 
 struct Backend {
     client: Client,
@@ -120,12 +121,19 @@ impl LanguageServer for Backend {
             .lock()
             .unwrap()
             .iter()
-            .map(|(id, (title, desc))| CompletionItem {
-                label: format!("#{id}"),
-                kind: Some(CompletionItemKind::REFERENCE),
-                detail: Some(title.clone()),
-                documentation: Some(Documentation::String(desc.clone())),
-                ..Default::default()
+            .map(|(id, (title, desc))| {
+                let short_title = title.as_str().truncate_ellipse_with(20, "…");
+                CompletionItem {
+                            label: format!("#{id}"),
+                            detail: Some(title.clone()),
+                            kind: Some(CompletionItemKind::REFERENCE),
+                            label_details: Some(CompletionItemLabelDetails {
+                                detail: None,
+                                description: Some(short_title.into()),
+                            }),
+                            documentation: Some(Documentation::String(desc.clone())),
+                            ..Default::default()
+                        }
             })
             .collect();
 
