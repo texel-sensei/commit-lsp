@@ -1,3 +1,4 @@
+use git_url_parse::GitUrl;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
@@ -150,8 +151,9 @@ pub async fn run_stdio() {
 }
 
 fn initialize_issue_tracker() -> Option<AzureDevops> {
-    let organization = std::env::var("COMMIT_LSP_AZURE_ORG").ok()?;
-    let project = std::env::var("COMMIT_LSP_AZURE_PROJECT").ok()?;
+    let url_info = guess_repo_url()?;
+    let organization = url_info.organization?;
+    let project = url_info.owner?;
     let cred_command = std::env::var("COMMIT_LSP_CREDENTIAL_COMMAND").ok()?;
     let pat = {
         let cmdline: Vec<&str> = cred_command.split_whitespace().collect();
@@ -164,4 +166,15 @@ fn initialize_issue_tracker() -> Option<AzureDevops> {
             .into()
     };
     Some(AzureDevops::new(pat, organization, project))
+}
+
+fn guess_repo_url() -> Option<GitUrl> {
+    let url = Command::new("git")
+        .args(["ls-remote", "--get-url", "origin"])
+        .output()
+        .unwrap()
+        .stdout;
+    let url = String::from_utf8(url).unwrap();
+
+    GitUrl::parse(url.trim()).ok()
 }

@@ -58,13 +58,11 @@ end
 The issue tracker integration is still very bare bones and work in progress.
 
 Currently only AzureDevOps is supported.
-To enable this integration, set the following environment variables:
+To enable this integration, set the following environment variable:
 
-- **COMMIT_LSP_AZURE_ORG** Name of the Azure organization
-- **COMMIT_LSP_AZURE_PROJECT** Project inside of the organization
 - **COMMIT_LSP_CREDENTIAL_COMMAND** Shell command used to acquire a Personal Access Token.
 
-If all variables are set, then commit-lsp will run the command defined in `COMMIT_LSP_CREDENTIAL_COMMAND`
+If this variable is set, then commit-lsp will run the command defined in `COMMIT_LSP_CREDENTIAL_COMMAND`
 This command should print a Personal Access Token (PAT) to stdout.
 The PAT must have Work Item `Read` access.
 
@@ -72,3 +70,6 @@ There is no quoting, currently only a simple split at white space is performed.
 An example command could look like this:
 
     export COMMIT_LSP_CREDENTIAL_COMMAND="pass show development/azure"
+
+Issue numbers for autocompletion are taken from the "Recent Activity" category of the current project.
+The AzureDevOps Organization and Project are parsed from the URL of the `origin` git remote.
