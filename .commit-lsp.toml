@@ -1,0 +1,75 @@
+[project]
+
+[[types]]
+name = "feat"
+summary = "New user facing functionality"
+description = """
+Commits of this type introduce new functionality.
+This means that commit-lsp can offer more to the user.
+It does not include purely internal code additions.
+"""
+
+[[types]]
+name = "fix"
+summary = "A bugfix"
+description = """
+Commits of this type resolve bugs in existing code.
+They are normally accompanied by a reference to an issue.
+"""
+
+[[types]]
+name = "docs"
+summary = "New or enhanced documentation"
+description = """
+Commits of this type extend or update documentation.
+They generally don't change code.
+"""
+
+[[types]]
+name = "refactor"
+summary = "Internal code changes without direct user impact"
+description = """
+This type includes all code changes that don't have direct user impact.
+For example adding a struct or module in preparation for a new feature.
+"""
+
+[[types]]
+name = "chore"
+summary = "General housekeeping in the project"
+description = """
+Changes to the project that do not touch code, but the tooling around it.
+For example adjustments to the CI pipeline or
+configurations for linters/formatters.
+"""
+
+[[scopes]]
+name = "linting"
+summary = "Adjustments to the linting portion of commit-lsp"
+description = """
+This scope includes linting done by commit-lsp.
+For example introducing a new rule for linting commit messages.
+"""
+
+[[scopes]]
+name = "devops"
+summary = "Issue tracker integrations"
+description = """
+This scope includes adding or adjusting third party issue tracker support.
+"""
+
+[[scopes]]
+name = "config"
+summary = "Changes to user configuration"
+description = """
+This scope pertains to user facing configuration options.
+For example commits that add new options,
+or change existing ones belong to this scope.
+"""
+
+[[scopes]]
+name = "lsp"
+summary = "Changes to lsp integration"
+description = """
+This scope includes commits that adjust the lsp support.
+For example improved hover support or autocompletion.
+"""
