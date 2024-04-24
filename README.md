@@ -2,6 +2,10 @@
 
 Language Server for git commit messages.
 
+> [!WARNING]
+> This project is in early development.
+> Expect bugs and frequent breaking changes!
+
 
 You got editor smarts for programming, editing config files and even writing prose.
 Why stop at writing commit messages?
