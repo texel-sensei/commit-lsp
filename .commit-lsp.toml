@@ -6,7 +6,8 @@ summary = "New user facing functionality"
 description = """
 Commits of this type introduce new functionality.
 This means that commit-lsp can offer more to the user.
-It does not include purely internal code additions.
+It does not include purely internal code additions,
+nor code hidden behind a feature flag (e.g. debug build).
 """
 
 [[types]]
@@ -31,6 +32,9 @@ summary = "Internal code changes without direct user impact"
 description = """
 This type includes all code changes that don't have direct user impact.
 For example adding a struct or module in preparation for a new feature.
+If the impact of the code is hidden behind a disabled feature flag,
+for example code that is only enabled in debug builds,
+then it also counts as `refactor`.
 """
 
 [[types]]
