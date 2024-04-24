@@ -39,7 +39,7 @@ impl State {
         // find word under cursor
         let start = line[..cursor]
             .rfind(|c: char| !c.is_alphabetic())
-            .map(|i| i+1)
+            .map(|i| i + 1)
             .unwrap_or(0);
 
         let end = line[cursor..]
@@ -51,12 +51,12 @@ impl State {
             return None;
         }
 
-        let text = line[start..end].to_owned();
+        let range = self.partial_line(pos.line, start..end);
 
-        Some(Item{
-            kind: ItemKind::Ty, // TODO
-            text,
-            range: self.partial_line(pos.line, start..end)
+        Some(Item {
+            kind: ItemKind::Ty, // TODO: actually determine kind instead of hard coding Ty
+            text: self.get_text(range),
+            range,
         })
     }
 
@@ -72,6 +72,27 @@ impl State {
             Position::new(line, range.start as u32),
             Position::new(line, range.end as u32),
         )
+    }
+
+    /// Returns the commit text inside the given range.
+    fn get_text(&self, range: Range) -> String {
+        // range.end.line is inclusive
+        let line_range = (range.start.line as usize)..=(range.end.line as usize);
+
+        let lines = &self.lines[line_range];
+
+        // count bytes preceding the last line, taking newlines into account
+        let offset: usize = lines
+            .iter()
+            .take(lines.len() - 1) // do not count line containing "range.end"
+            .map(|l| l.len() + 1) // + 1 for the newlines we will add
+            .sum();
+
+        let text = lines.join("\n");
+
+        let char_range = (range.start.character as usize)..(range.end.character as usize + offset);
+
+        text[char_range].to_owned()
     }
 }
 
@@ -132,4 +153,85 @@ pub enum ItemKind {
     Scope,
     /// A reference to a ticket/issue/etc
     Ref(u64),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Parse a text example with embedded range markers.
+    ///
+    /// `|>` will mark the start of the range and `<|` marks the end.
+    ///
+    /// Example input string:
+    /// ```gitcommit
+    /// The range |>is this part<| of the text.
+    /// ```
+    fn text_with_range(text: &str) -> (String, Range) {
+        let mut iter = text
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| l.contains("|>") || l.contains("<|"));
+
+        let (mut idx, mut line) = iter.next().unwrap();
+        let begin = {
+            let char = line.find("|>").unwrap();
+            Position::new(idx as u32, char as u32)
+        };
+
+        let end = {
+            let single_line = line.contains("<|");
+            if !single_line {
+                (idx, line) = iter.next().unwrap();
+            }
+
+            let mut char = line.find("<|").unwrap();
+
+            if single_line {
+                // skip the `|>` that precedes us in single line mode
+                char -= 2;
+            }
+            Position::new(idx as u32, char as u32)
+        };
+
+        assert_eq!(iter.next(), None);
+
+        (
+            text.replace("|>", "").replace("<|", ""),
+            Range::new(begin, end),
+        )
+    }
+
+    fn example(text: &str) -> (State, Range) {
+        let (text, range) = text_with_range(text);
+        (State::new(&text), range)
+    }
+
+    #[test]
+    fn test_get_text_single_line() {
+        let (state, range) = example("this |>is a<| test");
+
+        assert_eq!(state.get_text(range), "is a");
+    }
+
+    #[test]
+    fn test_get_text_full_single_line() {
+        let (state, range) = example("|>this is a test<|");
+
+        assert_eq!(state.get_text(range), "this is a test");
+    }
+
+    #[test]
+    fn test_get_text_full_empty_range() {
+        let (state, range) = example("this is|><| a test");
+
+        assert_eq!(state.get_text(range), "");
+    }
+
+    #[test]
+    fn test_get_text_multi_line() {
+        let (state, range) = example("this is a |>test\nover two<| lines");
+
+        assert_eq!(state.get_text(range), "test\nover two");
+    }
 }

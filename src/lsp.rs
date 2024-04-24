@@ -32,7 +32,9 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
-                hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(cfg!(debug_assertions))),
+                hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(cfg!(
+                    debug_assertions
+                ))),
                 completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
                     resolve_provider: Some(false),
                     trigger_characters: Some(vec!["#".to_owned()]),
