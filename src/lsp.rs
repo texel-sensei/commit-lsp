@@ -108,10 +108,16 @@ impl LanguageServer for Backend {
             .await;
     }
 
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
+    async fn hover(&self, par: HoverParams) -> Result<Option<Hover>> {
+        let pos = par.text_document_position_params.position;
+
+        let Some(item) = self.analysis.lock().unwrap().lookup(pos) else {
+            return Ok(None);
+        };
+
         Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
-            range: None,
+            contents: HoverContents::Scalar(MarkedString::String(item.text)),
+            range: Some(item.range),
         }))
     }
 
@@ -124,16 +130,16 @@ impl LanguageServer for Backend {
             .map(|(id, (title, desc))| {
                 let short_title = title.as_str().truncate_ellipse_with(20, "…");
                 CompletionItem {
-                            label: format!("#{id}"),
-                            detail: Some(title.clone()),
-                            kind: Some(CompletionItemKind::REFERENCE),
-                            label_details: Some(CompletionItemLabelDetails {
-                                detail: None,
-                                description: Some(short_title.into()),
-                            }),
-                            documentation: Some(Documentation::String(desc.clone())),
-                            ..Default::default()
-                        }
+                    label: format!("#{id}"),
+                    detail: Some(title.clone()),
+                    kind: Some(CompletionItemKind::REFERENCE),
+                    label_details: Some(CompletionItemLabelDetails {
+                        detail: None,
+                        description: Some(short_title.into()),
+                    }),
+                    documentation: Some(Documentation::String(desc.clone())),
+                    ..Default::default()
+                }
             })
             .collect();
 

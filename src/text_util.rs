@@ -31,11 +31,7 @@ impl<'a> Ellipse for &'a str {
             return Cow::Borrowed("");
         }
 
-        let result = self
-            .chars()
-            .take(len)
-            .chain(ellipse.chars())
-            .collect();
+        let result = self.chars().take(len).chain(ellipse.chars()).collect();
         Cow::Owned(result)
     }
 }
