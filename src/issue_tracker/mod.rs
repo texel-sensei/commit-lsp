@@ -3,13 +3,14 @@ use std::{collections::BTreeMap, process::Command, sync::Mutex};
 use async_trait::async_trait;
 
 mod azure;
+mod demo;
 mod gitlab;
 
-pub use azure::AzureDevops;
+use azure::AzureDevops;
 use git_url_parse::GitUrl;
 use secure_string::SecureString;
 
-use self::gitlab::Gitlab;
+use self::{demo::DemoAdapter, gitlab::Gitlab};
 
 pub struct IssueTracker {
     remote: Box<dyn IssueTrackerAdapter>,
@@ -19,6 +20,11 @@ pub struct IssueTracker {
 impl IssueTracker {
     pub fn guess_from_remote(url: GitUrl) -> Option<Self> {
         let adapter: Box<dyn IssueTrackerAdapter> = match url.host?.as_str() {
+            #[cfg(debug_assertions)]
+            _ if std::env::var("COMMIT_LSP_DEMO_FOLDER").is_ok() => {
+                let folder = std::env::var("COMMIT_LSP_DEMO_FOLDER").unwrap();
+                Box::new(DemoAdapter::new(folder.into()))
+            }
             "ssh.dev.azure.com" | "dev.azure.com" => {
                 let pat = get_credentials()?;
                 Box::new(AzureDevops::new(pat, url.organization?, url.owner?))
