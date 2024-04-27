@@ -13,6 +13,8 @@ Why stop at writing commit messages?
 Commit-lsp brings linting and auto completion
 for commit messages based on the conventional commit format.
 
+![asciicast](./doc/autocomplete.svg)
+
 ## Planned feature set
 
 The following features are implemented (✅), in work (🚧) or
