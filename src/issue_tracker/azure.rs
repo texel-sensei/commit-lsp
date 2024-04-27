@@ -1,6 +1,9 @@
+use async_trait::async_trait;
 use reqwest::Method;
 use secure_string::SecureString;
 use serde::Serialize;
+
+use super::{IssueTrackerAdapter, Ticket, UpstreamError};
 
 pub struct AzureDevops {
     pat: SecureString,
@@ -19,7 +22,17 @@ impl AzureDevops {
         }
     }
 
-    pub async fn get_work_items(&self) -> Vec<(i64, (String, String))> {
+    fn base_url(&self) -> String {
+        format!(
+            "https://dev.azure.com/{}/{}/_apis",
+            self.organization, self.project
+        )
+    }
+}
+
+#[async_trait]
+impl IssueTrackerAdapter for AzureDevops {
+    async fn list_ticket_numbers(&self) -> Result<Vec<u64>, UpstreamError> {
         let query = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [Assigned To] = @me AND [System.Id] in (@MyRecentActivity)".to_owned();
         let result = self
             .client
@@ -36,22 +49,13 @@ impl AzureDevops {
             .as_array()
             .unwrap()
             .iter()
-            .map(|i| i["id"].as_i64().unwrap())
+            .map(|i| i["id"].as_u64().unwrap())
             .collect();
 
-        let titles = self.resolve_item_titles(&items).await;
-
-        items.into_iter().zip(titles.into_iter()).collect()
+        Ok(items)
     }
 
-    fn base_url(&self) -> String {
-        format!(
-            "https://dev.azure.com/{}/{}/_apis",
-            self.organization, self.project
-        )
-    }
-
-    async fn resolve_item_titles(&self, ids: &[i64]) -> Vec<(String, String)> {
+    async fn get_ticket_details(&self, ids: &[u64]) -> Result<Vec<Ticket>, UpstreamError> {
         let result = self
             .client
             .request(
@@ -73,7 +77,8 @@ impl AzureDevops {
             .unwrap()
             .iter()
             .map(|i| {
-                (
+                Ticket::new(
+                    i["id"].as_u64().unwrap(),
                     i["fields"]["System.Title"].as_str().unwrap().to_owned(),
                     i["fields"]["System.Description"]
                         .as_str()
@@ -83,7 +88,7 @@ impl AzureDevops {
             })
             .collect();
 
-        items
+        Ok(items)
     }
 }
 
@@ -94,6 +99,6 @@ struct QueryRequest {
 
 #[derive(Serialize)]
 struct WorkItemsBatchRequest<'a> {
-    pub ids: &'a [i64],
+    pub ids: &'a [u64],
     pub fields: &'a [&'static str],
 }
