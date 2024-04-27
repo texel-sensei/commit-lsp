@@ -9,6 +9,7 @@ edition = "2021"
 async-trait = "0.1.80"
 clap = { version = "4.5.4", features = ["derive"] }
 git-url-parse = "0.4.4"
+gitlab = "0.1610.0"
 reqwest = { version = "0.12.3", features = ["json"] }
 secure-string = "0.3.0"
 serde = "1.0.197"

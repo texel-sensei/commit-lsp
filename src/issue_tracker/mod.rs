@@ -3,10 +3,13 @@ use std::{collections::BTreeMap, process::Command, sync::Mutex};
 use async_trait::async_trait;
 
 mod azure;
+mod gitlab;
 
 pub use azure::AzureDevops;
 use git_url_parse::GitUrl;
 use secure_string::SecureString;
+
+use self::gitlab::Gitlab;
 
 pub struct IssueTracker {
     remote: Box<dyn IssueTrackerAdapter>,
@@ -15,10 +18,15 @@ pub struct IssueTracker {
 
 impl IssueTracker {
     pub fn guess_from_remote(url: GitUrl) -> Option<Self> {
-        let adapter = match url.host?.as_str() {
+        let adapter: Box<dyn IssueTrackerAdapter> = match url.host?.as_str() {
             "ssh.dev.azure.com" | "dev.azure.com" => {
                 let pat = get_credentials()?;
                 Box::new(AzureDevops::new(pat, url.organization?, url.owner?))
+            }
+            host if host.contains("gitlab") => {
+                let token = get_credentials()?;
+                let project = format!("{}/{}", url.owner?, url.name);
+                Box::new(Gitlab::new(token, host.to_owned(), project))
             }
             _ => return None,
         };

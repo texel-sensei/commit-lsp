@@ -27,7 +27,7 @@ planned but not yet implemented (❌):
     - Support for:
         - ❌ github
         - 🚧 AzureDevOps
-        - ❌ gitlab
+        - 🚧 gitlab
 
 ## Editor integration
 
