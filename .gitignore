@@ -2,4 +2,6 @@
 !.gitignore
 !.commit-lsp.toml
 
+*.log
+
 /target

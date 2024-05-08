@@ -1,9 +1,10 @@
-use std::{fs::File, io::Read, process::ExitCode};
+use std::{fs::File, io::Read, process::ExitCode, sync::Mutex};
 
 use clap::Parser as _;
 use cli::Cli;
 use git::guess_repo_url;
 use issue_tracker::IssueTracker;
+use tracing::info;
 
 pub mod analysis;
 mod cli;
@@ -19,6 +20,16 @@ pub mod text_util;
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
+
+    if cfg!(debug_assertions) {
+        let log_file = File::create("commit-lsp.log").expect("Failed to create log file");
+        let subscriber = tracing_subscriber::fmt()
+            .without_time()
+            .pretty()
+            .with_writer(Mutex::new(log_file))
+            .finish();
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+    }
 
     let config = config::User::load_default_file();
     let remote = initialize_issue_tracker(&config);
@@ -57,5 +68,6 @@ fn analyse_commit(text: &str) -> ExitCode {
 
 fn initialize_issue_tracker(config: &config::User) -> Option<IssueTracker> {
     let url_info = guess_repo_url()?;
+    info!("Using git url '{url_info}'");
     IssueTracker::guess_from_remote(url_info, &config)
 }

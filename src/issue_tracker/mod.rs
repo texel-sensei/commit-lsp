@@ -9,6 +9,7 @@ mod gitlab;
 use azure::AzureDevops;
 use git_url_parse::GitUrl;
 use secure_string::SecureString;
+use tracing::{info, warn};
 
 use crate::config;
 
@@ -22,6 +23,7 @@ pub struct IssueTracker {
 impl IssueTracker {
     pub fn guess_from_remote(url: GitUrl, config: &config::User) -> Option<Self> {
         let cred_command = lookup_credential_command(&url.to_string(), &config)?;
+        info!("Got credential command: {cred_command:?}");
         let adapter: Box<dyn IssueTrackerAdapter> = match url.host?.as_str() {
             #[cfg(debug_assertions)]
             _ if std::env::var("COMMIT_LSP_DEMO_FOLDER").is_ok() => {
@@ -37,7 +39,13 @@ impl IssueTracker {
                 let project = format!("{}/{}", url.owner?, url.name);
                 Box::new(Gitlab::new(token, host.to_owned(), project))
             }
-            _ => return None,
+            url => {
+                warn!(
+                    host = url.to_string(),
+                    "Unsupported host! No issue autocompletion available"
+                );
+                return None;
+            }
         };
 
         Some(Self {
@@ -126,19 +134,25 @@ fn get_credentials(cmdline: &[impl AsRef<OsStr>]) -> Option<SecureString> {
     let pat = {
         let (cmd, args) = cmdline.split_first()?;
 
-        let out = Command::new(cmd).args(args).output();
-        String::from_utf8(out.unwrap().stdout)
-            .unwrap()
-            .trim()
-            .into()
+        let out = Command::new(cmd).args(args).output().unwrap();
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+            let code = out.status.code();
+            warn!(stderr, ?code, "Failed to execute credentials command!");
+            return None;
+        }
+        String::from_utf8(out.stdout).unwrap().trim().into()
     };
     Some(pat)
 }
 
+#[tracing::instrument]
 fn lookup_credential_command(url: &str, config: &config::User) -> Option<Vec<String>> {
+    info!(url, "searching for host info");
     config
         .remotes
         .iter()
         .find(|r| url.contains(&r.host))
+        .inspect(|r| info!("Using remote {r:?}"))
         .map(|r| r.credentials_command.clone())
 }
