@@ -59,23 +59,58 @@ end
 
 ```
 
-## Connecting to Azure DevOps
+## Connecting to a remote issue tracker
 
 The issue tracker integration is still very bare bones and work in progress.
 
-Currently only AzureDevOps is supported.
-To enable this integration, set the following environment variable:
+Currently only AzureDevOps and Gitlab are supported.
 
-- **COMMIT_LSP_CREDENTIAL_COMMAND** Shell command used to acquire a Personal Access Token.
+The integration is controlled via a config file in the users home directory.
+This config defines cli commands to provide credentials for the issue tracker.
 
-If this variable is set, then commit-lsp will run the command defined in `COMMIT_LSP_CREDENTIAL_COMMAND`
-This command should print a Personal Access Token (PAT) to stdout.
+The config file is located in the following places:
+
+|---------|-------------------------------------------------------------------|
+| OS      | location                                                          |
+|---------|-------------------------------------------------------------------|
+| Linux   | $XDG_CONFIG_HOME/commit-lsp/config.toml                           |
+| Windows | %APPDATA%/texel/commit-lsp/config.toml                            |
+| macOS   | $HOME/Library/Application Support/at.texel.commit-lsp/config.toml |
+|---------|-------------------------------------------------------------------|
+
+The config file contains a list of remotes.
+The first remote where the host is a substring of the git remote URL will be picked.
+
+For example:
+
+```toml
+[[remotes]]
+host = "dev.azure.com"
+credentials_command = ["pass", "show", "development/work/azure"]
+
+[[remotes]]
+host = "gitlab.example.com"
+credentials_command = ["pass", "show", "development/hobby/gitlab"]
+
+[[remotes]]
+host = "gitlab.work.example.com"
+credentials_command = ["pass", "show", "development/work/gitlab"]
+```
+
+If a host matches the origin URL of the repository origin,
+then commit-lsp will run the command defined in `credentials_command`
+to access the credentials.
+
+### AzureDevOps
+
+The credentials command should print a Personal Access Token (PAT) to stdout.
 The PAT must have Work Item `Read` access.
-
-There is no quoting, currently only a simple split at white space is performed.
-An example command could look like this:
-
-    export COMMIT_LSP_CREDENTIAL_COMMAND="pass show development/azure"
 
 Issue numbers for autocompletion are taken from the "Recent Activity" category of the current project.
 The AzureDevOps Organization and Project are parsed from the URL of the `origin` git remote.
+
+### Gitlab
+
+The credentials_command should print an access token to stdout with issue read access.
+Autocompletion will use all open issues of the current project.
+The project name and owner are parsed from the `origin` git remote URL.

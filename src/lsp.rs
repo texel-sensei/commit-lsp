@@ -12,7 +12,6 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use crate::analysis;
-use crate::git::guess_repo_url;
 use crate::issue_tracker::IssueTracker;
 use crate::text_util::Ellipse as _;
 
@@ -151,19 +150,14 @@ impl LanguageServer for Backend {
     }
 }
 
-pub async fn run_stdio() {
+pub async fn run_stdio(remote: Option<IssueTracker>) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
         analysis: Default::default(),
-        tracker: initialize_issue_tracker().map(Arc::new),
+        tracker: remote.map(Arc::new),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
-}
-
-fn initialize_issue_tracker() -> Option<IssueTracker> {
-    let url_info = guess_repo_url()?;
-    IssueTracker::guess_from_remote(url_info)
 }
