@@ -11,7 +11,10 @@ use git_url_parse::GitUrl;
 use secure_string::SecureString;
 use tracing::{info, warn};
 
-use crate::config;
+use crate::{
+    config,
+    healthcheck::{HealthReport, ResultExt},
+};
 
 use self::{demo::DemoAdapter, gitlab::Gitlab};
 
@@ -21,8 +24,14 @@ pub struct IssueTracker {
 }
 
 impl IssueTracker {
-    pub fn guess_from_remote(url: GitUrl, config: &config::User) -> Option<Self> {
-        let cred_command = lookup_credential_command(&url.to_string(), &config)?;
+    pub fn guess_from_remote(
+        url: GitUrl,
+        config: &config::User,
+        health: &mut HealthReport,
+    ) -> Option<Self> {
+        let cred_command = lookup_credential_command(&url.to_string(), &config)
+            .report(health, "lookup credential command")?;
+
         info!("Got credential command: {cred_command:?}");
         let adapter: Box<dyn IssueTrackerAdapter> = match url.host?.as_str() {
             #[cfg(debug_assertions)]
@@ -31,11 +40,12 @@ impl IssueTracker {
                 Box::new(DemoAdapter::new(folder.into()))
             }
             "ssh.dev.azure.com" | "dev.azure.com" => {
-                let pat = get_credentials(&cred_command)?;
+                let pat = get_credentials(&cred_command).report(health, "retrieve credentials")?;
                 Box::new(AzureDevops::new(pat, url.organization?, url.owner?))
             }
             host if host.contains("gitlab") => {
-                let token = get_credentials(&cred_command)?;
+                let token =
+                    get_credentials(&cred_command).report(health, "retrieve credentials")?;
                 let project = format!("{}/{}", url.owner?, url.name);
                 Box::new(Gitlab::new(token, host.to_owned(), project))
             }
@@ -119,7 +129,16 @@ impl Ticket {
     }
 }
 
+#[derive(Debug)]
 pub enum UpstreamError {}
+
+impl std::fmt::Display for UpstreamError {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        unreachable!()
+    }
+}
+
+impl std::error::Error for UpstreamError {}
 
 #[async_trait]
 trait IssueTrackerAdapter: Send + Sync {

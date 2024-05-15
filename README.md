@@ -114,3 +114,10 @@ The AzureDevOps Organization and Project are parsed from the URL of the `origin`
 The credentials_command should print an access token to stdout with issue read access.
 Autocompletion will use all open issues of the current project.
 The project name and owner are parsed from the `origin` git remote URL.
+
+## Troubleshooting
+
+If autocompletion of issue numbers is not working,
+run `commit-lsp checkhealth` in the repository.
+
+This command runs several health checks and reports their status.
