@@ -68,6 +68,15 @@ This scope includes adding or adjusting third party issue tracker support.
 """
 
 [[scopes]]
+name = "user"
+summary = "User facing documentation"
+description = """
+This scope is about documentation for the user.
+It contains for example the project README file,
+but not any in code documentation.
+"""
+
+[[scopes]]
 name = "config"
 summary = "Changes to user configuration"
 description = """
