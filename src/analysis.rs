@@ -286,7 +286,9 @@ mod test {
 
     fn example(text: &str) -> (State, Range) {
         let (text, range) = text_with_range(text);
-        (State::new(&text), range)
+        let mut state = State::new(Default::default());
+        state.update_text(&text);
+        (state, range)
     }
 
     #[test]
