@@ -112,6 +112,14 @@ impl State {
         self.config.scopes.iter().find(|t| t.name == ty).cloned()
     }
 
+    pub fn get_commit_types(&self) -> &[CommitElementDefinition] {
+        &self.config.types
+    }
+
+    pub fn get_commit_scopes(&self) -> &[CommitElementDefinition] {
+        &self.config.scopes
+    }
+
     fn full_line(&self, idx: u32) -> Range {
         Range::new(
             Position::new(idx, 0),

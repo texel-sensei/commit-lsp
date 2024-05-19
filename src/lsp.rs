@@ -33,7 +33,7 @@ impl LanguageServer for Backend {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
                     resolve_provider: Some(false),
-                    trigger_characters: Some(vec!["#".to_owned()]),
+                    trigger_characters: Some(vec!["#".to_owned(), "(".to_owned()]),
                     all_commit_characters: None,
                     work_done_progress_options: WorkDoneProgressOptions {
                         work_done_progress: None,
@@ -113,7 +113,7 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
-        info!(text=item.text, "Hovering @");
+        info!(text = item.text, "Hovering @");
 
         match item.kind {
             ItemKind::Ty => {
@@ -169,7 +169,37 @@ impl LanguageServer for Backend {
         }))
     }
 
-    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        if params.text_document_position.position.line == 0 {
+            let analysis = self.analysis.lock().unwrap();
+            let items = if params
+                .context
+                .is_some_and(|c| c.trigger_character.is_some_and(|c| c == "("))
+            {
+                analysis.get_commit_scopes()
+            } else {
+                analysis.get_commit_types()
+            };
+            let items: Vec<_> = items
+                .iter()
+                .map(|ty| CompletionItem {
+                    label: ty.name.clone(),
+                    detail: Some(ty.summary.clone()),
+                    kind: Some(CompletionItemKind::TEXT),
+                    label_details: Some(CompletionItemLabelDetails {
+                        detail: None,
+                        description: Some(ty.summary.clone()),
+                    }),
+                    documentation: Some(Documentation::String(ty.description.clone())),
+                    ..Default::default()
+                })
+                .collect();
+            if items.is_empty() {
+                return Ok(None);
+            }
+
+            return Ok(Some(CompletionResponse::Array(items)));
+        }
         let Some(remote) = &self.tracker else {
             return Ok(None);
         };

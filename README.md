@@ -21,15 +21,15 @@ The following features are implemented (✅), in work (🚧) or
 planned but not yet implemented (❌):
 
 - ❌ Style checking if the commit follows the conventional commit format
-- ❌ Autocompletion for commit types and scopes with project specific config
+- ✅ Autocompletion for commit types and scopes with project specific config
     - Never guess again if your team uses `doc` or `docs` for documentation commits
 - 🚧 Autocompletion for work item references
     - commit-lsp queries for Issues/Tickets/Work Items assigned to your local git user
       and provides completion for those assigned to you
     - Support for:
         - ❌ github
-        - 🚧 AzureDevOps
-        - 🚧 gitlab
+        - ✅ AzureDevOps
+        - ✅ gitlab
 
 ## Editor integration
 
