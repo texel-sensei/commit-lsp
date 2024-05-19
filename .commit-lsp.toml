@@ -44,6 +44,14 @@ For example adjustments to the CI pipeline or
 configurations for linters/formatters.
 """
 
+[[types]]
+name = "test"
+summary = "New or fixed tests"
+description = """
+Changes to existing tests (e.g. unit or integration tests)
+or implementation of new tests.
+"""
+
 [[scopes]]
 name = "linting"
 summary = "Adjustments to the linting portion of commit-lsp"
