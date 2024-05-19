@@ -70,13 +70,11 @@ This config defines cli commands to provide credentials for the issue tracker.
 
 The config file is located in the following places:
 
-|---------|-------------------------------------------------------------------|
 | OS      | location                                                          |
 |---------|-------------------------------------------------------------------|
 | Linux   | $XDG_CONFIG_HOME/commit-lsp/config.toml                           |
 | Windows | %APPDATA%/texel/commit-lsp/config.toml                            |
 | macOS   | $HOME/Library/Application Support/at.texel.commit-lsp/config.toml |
-|---------|-------------------------------------------------------------------|
 
 The config file contains a list of remotes.
 The first remote where the host is a substring of the git remote URL will be picked.
