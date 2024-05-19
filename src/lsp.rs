@@ -10,6 +10,7 @@ use tower_lsp::lsp_types::{
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tracing::info;
 
 use crate::analysis::{self, ItemKind};
 use crate::issue_tracker::IssueTracker;
@@ -105,27 +106,60 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, par: HoverParams) -> Result<Option<Hover>> {
+        info!("Hover request");
         let pos = par.text_document_position_params.position;
 
         let Some(item) = self.analysis.lock().unwrap().lookup(pos) else {
             return Ok(None);
         };
 
-        if let ItemKind::Ref(id) = item.kind {
-            if let Some(tracker) = &self.tracker {
-                let ticket = tracker
-                    .get_ticket_details(id)
-                    .await
-                    .expect("To connect to remote");
+        info!(text=item.text, "Hovering @");
 
-                let text = ticket
-                    .map(|t| format!("{}\n\n{}", t.title(), t.text()))
-                    .unwrap_or_else(|| format!("#{id} not found!"));
+        match item.kind {
+            ItemKind::Ty => {
+                let analysis = self.analysis.lock().unwrap();
+                let Some(info) = analysis.commit_type_info() else {
+                    return Ok(None);
+                };
 
                 return Ok(Some(Hover {
-                    contents: HoverContents::Scalar(MarkedString::String(text)),
+                    contents: HoverContents::Scalar(MarkedString::String(format!(
+                        "# {}\n\n{}",
+                        info.summary, info.description
+                    ))),
                     range: Some(item.range),
                 }));
+            }
+            ItemKind::Scope => {
+                let analysis = self.analysis.lock().unwrap();
+                let Some(info) = analysis.commit_scope_info() else {
+                    return Ok(None);
+                };
+
+                return Ok(Some(Hover {
+                    contents: HoverContents::Scalar(MarkedString::String(format!(
+                        "# {}\n\n{}",
+                        info.summary, info.description
+                    ))),
+                    range: Some(item.range),
+                }));
+            }
+            ItemKind::Ref(id) => {
+                if let Some(tracker) = &self.tracker {
+                    let ticket = tracker
+                        .get_ticket_details(id)
+                        .await
+                        .expect("To connect to remote");
+
+                    let text = ticket
+                        .map(|t| format!("# {}\n\n{}", t.title(), t.text()))
+                        .unwrap_or_else(|| format!("#{id} not found!"));
+
+                    return Ok(Some(Hover {
+                        contents: HoverContents::Scalar(MarkedString::String(text)),
+                        range: Some(item.range),
+                    }));
+                }
             }
         }
 
@@ -166,13 +200,13 @@ impl LanguageServer for Backend {
     }
 }
 
-pub async fn run_stdio(remote: Option<IssueTracker>) {
+pub async fn run_stdio(analysis: analysis::State, remote: Option<IssueTracker>) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        analysis: Default::default(),
+        analysis: analysis.into(),
         tracker: remote.map(Arc::new),
     });
     Server::new(stdin, stdout, socket).serve(service).await;

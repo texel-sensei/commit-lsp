@@ -5,7 +5,7 @@ use cli::Cli;
 use git::guess_repo_url;
 use healthcheck::HealthReport;
 use issue_tracker::IssueTracker;
-use tracing::info;
+use tracing::{info, trace};
 
 pub mod analysis;
 mod cli;
@@ -37,22 +37,28 @@ async fn main() -> ExitCode {
     match cli.action {
         cli::Action::Run => {
             let mut health = HealthReport::silent();
-            let config = config::User::load_default_file(&mut health);
-            let remote = initialize_issue_tracker(&config, &mut health);
-            lsp::run_stdio(remote).await;
+            let user_config = config::User::load_default_file(&mut health);
+            let repo_config = config::Repository::load_default_file(&mut health);
+            trace!("Using config: {:?}", repo_config);
+            let remote = initialize_issue_tracker(&user_config, &mut health);
+            let analysis = analysis::State::new(repo_config);
+            lsp::run_stdio(analysis, remote).await;
         }
         cli::Action::Lint { file } => {
+            let mut health = HealthReport::silent();
             let mut text = String::new();
             File::open(&file)
                 .unwrap()
                 .read_to_string(&mut text)
                 .unwrap();
-            return analyse_commit(&text);
+            let repo_config = config::Repository::load_default_file(&mut health);
+            return analyse_commit(repo_config, &text);
         }
         cli::Action::Checkhealth => {
             let mut health = HealthReport::new("commit-lsp");
-            let config = config::User::load_default_file(&mut health);
-            let remote = initialize_issue_tracker(&config, &mut health);
+            let user_config = config::User::load_default_file(&mut health);
+            let _repo_config = config::Repository::load_default_file(&mut health);
+            let remote = initialize_issue_tracker(&user_config, &mut health);
 
             if let Some(remote) = remote {
                 let check = health.start("request tickets");
@@ -79,8 +85,9 @@ async fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn analyse_commit(text: &str) -> ExitCode {
-    let state = analysis::State::new(text);
+fn analyse_commit(config: config::Repository, text: &str) -> ExitCode {
+    let mut state = analysis::State::new(config);
+    state.update_text(text);
     let diagnostics = state.all_diagnostics();
 
     for diag in &diagnostics {

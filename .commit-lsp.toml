@@ -1,5 +1,3 @@
-[project]
-
 [[types]]
 name = "feat"
 summary = "New user facing functionality"

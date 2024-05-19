@@ -3,21 +3,40 @@ use std::fmt::Display;
 use tower_lsp::lsp_types::{self, Position, Range};
 use tracing::info;
 
-use crate::regex;
+use crate::{
+    config::{self, CommitElementDefinition},
+    regex,
+};
 
 pub struct State {
+    config: config::Repository,
+
     lines: Vec<String>,
+
+    ty: Option<Range>,
+    scope: Option<Range>,
 }
 
 impl State {
-    pub fn new(text: &str) -> Self {
+    pub fn new(config: config::Repository) -> Self {
         Self {
-            lines: text.lines().map(ToOwned::to_owned).collect(),
+            config,
+            lines: Vec::new(),
+            ty: None,
+            scope: None,
         }
     }
 
     pub fn update_text(&mut self, new_text: &str) {
         self.lines = new_text.lines().map(ToOwned::to_owned).collect();
+
+        if let Some(header) = self.lines.first() {
+            if let Some((ty, scope, _breaking)) = parse_header(header) {
+                self.ty = Some(self.partial_line(0, substr_offset(header, ty)));
+
+                self.scope = scope.map(|txt| self.partial_line(0, substr_offset(header, txt)));
+            }
+        }
     }
 
     pub fn all_diagnostics(&self) -> Vec<Diagnostic> {
@@ -58,9 +77,8 @@ impl State {
         let text = self.get_text(range);
         info!(text, "Found word under cursor");
 
-        let ticket_regex = regex!(r"#([0-9]+)");
-
         let kind = {
+            let ticket_regex = regex!(r"#([0-9]+)");
             if let Some(caps) = ticket_regex.captures(&text) {
                 let Ok(id) = caps
                     .get(1)
@@ -71,6 +89,10 @@ impl State {
                     return None;
                 };
                 ItemKind::Ref(id)
+            } else if Some(range) == self.ty {
+                ItemKind::Ty
+            } else if Some(range) == self.scope {
+                ItemKind::Scope
             } else {
                 // TODO(texel, 2024-05-19): determine other types
                 return None;
@@ -78,6 +100,16 @@ impl State {
         };
 
         Some(Item { kind, text, range })
+    }
+
+    pub fn commit_type_info(&self) -> Option<CommitElementDefinition> {
+        let ty = self.get_text(self.ty?);
+        self.config.types.iter().find(|t| t.name == ty).cloned()
+    }
+
+    pub fn commit_scope_info(&self) -> Option<CommitElementDefinition> {
+        let ty = self.get_text(self.scope?);
+        self.config.scopes.iter().find(|t| t.name == ty).cloned()
     }
 
     fn full_line(&self, idx: u32) -> Range {
@@ -116,10 +148,32 @@ impl State {
     }
 }
 
-impl Default for State {
-    fn default() -> Self {
-        Self::new("")
-    }
+fn parse_header(first_line: &str) -> Option<(&str, Option<&str>, bool)> {
+    let header_format =
+        regex!(r#"(?P<ty>[a-z]+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.*)$"#);
+
+    let captures = header_format.captures(first_line)?;
+
+    let ty = captures.name("ty")?.as_str();
+    let scope = captures.name("scope").map(|m| m.as_str());
+    let breaking = captures.name("breaking").is_some();
+
+    Some((ty, scope, breaking))
+}
+
+/// Returns the offset of a string slice in another string slice.
+/// The second slice **MUST** point into part of the first.
+fn substr_offset<'needle, 'haystack: 'needle>(
+    container: &'haystack str,
+    contained: &'needle str,
+) -> std::ops::Range<usize> {
+    let delta = unsafe { contained.as_ptr().offset_from(container.as_ptr()) };
+    assert!(delta >= 0);
+
+    let delta = delta as usize;
+    assert!(delta + contained.len() <= container.len());
+
+    delta..delta + contained.len()
 }
 
 pub struct Diagnostic {
@@ -253,5 +307,46 @@ mod test {
         let (state, range) = example("this is a |>test\nover two<| lines");
 
         assert_eq!(state.get_text(range), "test\nover two");
+    }
+
+    #[test]
+    fn test_parse_header_with_scope() {
+        let example = "feat(lsp): implement the thing";
+
+        let (ty, scope, breaking) = parse_header(example).unwrap();
+
+        assert_eq!(ty, "feat");
+        assert_eq!(scope, Some("lsp"));
+        assert_eq!(breaking, false);
+    }
+
+    #[test]
+    fn test_parse_header_without_scope() {
+        let example = "feat: implement the thing";
+
+        let (ty, scope, breaking) = parse_header(example).unwrap();
+
+        assert_eq!(ty, "feat");
+        assert_eq!(scope, None);
+        assert_eq!(breaking, false);
+    }
+
+    #[test]
+    fn test_parse_header_with_scope_and_breaking_change() {
+        let example = "feat(lsp)!: implement the thing";
+
+        let (ty, scope, breaking) = parse_header(example).unwrap();
+
+        assert_eq!(ty, "feat");
+        assert_eq!(scope, Some("lsp"));
+        assert_eq!(breaking, true);
+    }
+
+    #[test]
+    fn test_substring_offset_works() {
+        let outer = "Hello World!";
+        let inner = &outer[6..];
+
+        assert_eq!(substr_offset(outer, inner), 6..12);
     }
 }
