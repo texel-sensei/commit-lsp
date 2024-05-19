@@ -317,6 +317,7 @@ dependencies = [
  "directories",
  "git-url-parse",
  "gitlab",
+ "regex",
  "reqwest 0.12.3",
  "secure-string",
  "serde",

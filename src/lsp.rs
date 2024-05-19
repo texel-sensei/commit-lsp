@@ -3,15 +3,15 @@ use std::sync::{Arc, Mutex};
 use tower_lsp::lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Documentation,
-    Hover, HoverContents, HoverParams, InitializeParams, InitializeResult, InitializedParams,
-    MarkedString, ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
-    WorkDoneProgressOptions,
+    Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult,
+    InitializedParams, MarkedString, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
+    TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use crate::analysis;
+use crate::analysis::{self, ItemKind};
 use crate::issue_tracker::IssueTracker;
 use crate::text_util::Ellipse as _;
 
@@ -29,9 +29,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
-                hover_provider: Some(tower_lsp::lsp_types::HoverProviderCapability::Simple(cfg!(
-                    debug_assertions
-                ))),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(tower_lsp::lsp_types::CompletionOptions {
                     resolve_provider: Some(false),
                     trigger_characters: Some(vec!["#".to_owned()]),
@@ -112,6 +110,24 @@ impl LanguageServer for Backend {
         let Some(item) = self.analysis.lock().unwrap().lookup(pos) else {
             return Ok(None);
         };
+
+        if let ItemKind::Ref(id) = item.kind {
+            if let Some(tracker) = &self.tracker {
+                let ticket = tracker
+                    .get_ticket_details(id)
+                    .await
+                    .expect("To connect to remote");
+
+                let text = ticket
+                    .map(|t| format!("{}\n\n{}", t.title(), t.text()))
+                    .unwrap_or_else(|| format!("#{id} not found!"));
+
+                return Ok(Some(Hover {
+                    contents: HoverContents::Scalar(MarkedString::String(text)),
+                    range: Some(item.range),
+                }));
+            }
+        }
 
         Ok(Some(Hover {
             contents: HoverContents::Scalar(MarkedString::String(item.text)),

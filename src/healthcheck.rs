@@ -118,7 +118,8 @@ impl<'a> OngoingReport<'a> {
     }
 
     pub fn ok_with(self, txt: impl Into<String>) {
-        self.health.report(self.component, ComponentState::Ok(Some(txt.into())));
+        self.health
+            .report(self.component, ComponentState::Ok(Some(txt.into())));
     }
 
     pub fn info(self, txt: impl Into<String>) {

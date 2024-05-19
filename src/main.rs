@@ -22,7 +22,6 @@ pub mod text_util;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-
     let cli = Cli::parse();
 
     if cfg!(debug_assertions) {
@@ -60,14 +59,18 @@ async fn main() -> ExitCode {
                 match remote.request_ticket_information().await {
                     Ok(tickets) if !tickets.is_empty() => {
                         let example = tickets.first().unwrap();
-                        check.ok_with(format!("Example ticket: #{} '{}'", example.id(), example.title()));
-                    },
+                        check.ok_with(format!(
+                            "Example ticket: #{} '{}'",
+                            example.id(),
+                            example.title()
+                        ));
+                    }
                     Ok(_) => {
                         check.warn("Got empty list of tickets");
                     }
                     Err(e) => {
                         check.error(e.to_string());
-                    },
+                    }
                 }
             }
         }

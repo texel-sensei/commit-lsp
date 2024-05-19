@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
 use tower_lsp::lsp_types::{self, Position, Range};
+use tracing::info;
+
+use crate::regex;
 
 pub struct State {
     lines: Vec<String>,
@@ -38,12 +41,12 @@ impl State {
 
         // find word under cursor
         let start = line[..cursor]
-            .rfind(|c: char| !c.is_alphabetic())
+            .rfind(|c: char| !c.is_alphanumeric() && c != '#')
             .map(|i| i + 1)
             .unwrap_or(0);
 
         let end = line[cursor..]
-            .find(|c: char| !c.is_alphabetic())
+            .find(|c: char| !c.is_alphanumeric() && c != '#')
             .map(|i| i + cursor)
             .unwrap_or(line.len());
 
@@ -52,12 +55,29 @@ impl State {
         }
 
         let range = self.partial_line(pos.line, start..end);
+        let text = self.get_text(range);
+        info!(text, "Found word under cursor");
 
-        Some(Item {
-            kind: ItemKind::Ty, // TODO: actually determine kind instead of hard coding Ty
-            text: self.get_text(range),
-            range,
-        })
+        let ticket_regex = regex!(r"#([0-9]+)");
+
+        let kind = {
+            if let Some(caps) = ticket_regex.captures(&text) {
+                let Ok(id) = caps
+                    .get(1)
+                    .expect("There should be one capture")
+                    .as_str()
+                    .parse()
+                else {
+                    return None;
+                };
+                ItemKind::Ref(id)
+            } else {
+                // TODO(texel, 2024-05-19): determine other types
+                return None;
+            }
+        };
+
+        Some(Item { kind, text, range })
     }
 
     fn full_line(&self, idx: u32) -> Range {
