@@ -29,16 +29,18 @@ impl IssueTracker {
         config: &config::User,
         health: &mut HealthReport,
     ) -> Option<Self> {
+        if cfg!(debug_assertions) && std::env::var("COMMIT_LSP_DEMO_FOLDER").is_ok() {
+            let folder = std::env::var("COMMIT_LSP_DEMO_FOLDER").unwrap();
+            return Some(Self {
+                remote: Box::new(DemoAdapter::new(folder.into())),
+                ticket_cache: Default::default(),
+            });
+        }
         let cred_command = lookup_credential_command(&url.to_string(), &config)
             .report(health, "lookup credential command")?;
 
         info!("Got credential command: {cred_command:?}");
         let adapter: Box<dyn IssueTrackerAdapter> = match url.host?.as_str() {
-            #[cfg(debug_assertions)]
-            _ if std::env::var("COMMIT_LSP_DEMO_FOLDER").is_ok() => {
-                let folder = std::env::var("COMMIT_LSP_DEMO_FOLDER").unwrap();
-                Box::new(DemoAdapter::new(folder.into()))
-            }
             "ssh.dev.azure.com" | "dev.azure.com" => {
                 let pat = get_credentials(&cred_command).report(health, "retrieve credentials")?;
                 Box::new(AzureDevops::new(pat, url.organization?, url.owner?))
