@@ -82,7 +82,9 @@ impl IssueTrackerAdapter for AzureDevops {
                     i["fields"]["System.Title"].as_str().unwrap().to_owned(),
                     i["fields"]["System.Description"]
                         .as_str()
-                        .unwrap()
+                        // We need to handle the case where a work item has no description,
+                        // so we just default to empty string.
+                        .unwrap_or_default()
                         .to_owned(),
                 )
             })
