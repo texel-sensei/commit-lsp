@@ -31,6 +31,13 @@ planned but not yet implemented (❌):
         - ✅ AzureDevOps
         - ✅ gitlab
 
+## Installation
+
+Currently only installation from source is supported.
+To build commit-lsp make sure to have the latest rust toolchain installed and run:
+
+    cargo install --locked --git https://github.com/texel-sensei/commit-lsp
+
 ## Editor integration
 
 Since commit-lsp uses the Language Server Protocol,
