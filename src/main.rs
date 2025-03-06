@@ -60,7 +60,7 @@ async fn main() -> ExitCode {
             let _repo_config = config::Repository::load_default_file(&mut health);
             let remote = initialize_issue_tracker(&user_config, &mut health);
 
-            if let Some(remote) = remote {
+            if let Some(remote) = remote.report(&mut health, "Issue tracker initialized") {
                 let check = health.start("request tickets");
                 match remote.request_ticket_information().await {
                     Ok(tickets) if !tickets.is_empty() => {
@@ -110,7 +110,7 @@ fn initialize_issue_tracker(
     let check = health.start("retrieve repo url");
     let url_info = guess_repo_url();
     match &url_info {
-        Some(url) => check.ok_with(format!("Got '{url}'")),
+        Some(url) => check.ok_with(url.to_string()),
         None => check.error("Failed to get remote url"),
     }
     let url_info = url_info?;

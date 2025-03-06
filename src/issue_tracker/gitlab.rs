@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use gitlab::api::{issues::IssueState, AsyncQuery};
+use gitlab::api::{AsyncQuery, issues::IssueState};
 use secure_string::SecureString;
 use serde::Deserialize;
 use tokio::sync::OnceCell;

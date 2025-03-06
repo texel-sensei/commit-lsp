@@ -1,6 +1,6 @@
 //! Functionality to check whether the environment is sane and reporting this to the user.
 
-use std::error::Error;
+use std::{error::Error, fmt::Display};
 
 use colored::Colorize as _;
 
@@ -35,7 +35,7 @@ impl HealthReport {
 
         let padding = "-".repeat((80 - len) / 2);
 
-        println!("{} {} {}", padding, self.context.bold(), padding);
+        println!("\n{} {} {}", padding, self.context.bold(), padding);
     }
 
     pub fn report(&mut self, name: impl Into<String>, state: ComponentState) {
@@ -43,10 +43,10 @@ impl HealthReport {
             return;
         }
 
-        print!("\n- {}: ", name.into());
+        print!("- {}: ", name.into());
         match state {
             ComponentState::Ok(None) => println!("{}", "OK".green()),
-            ComponentState::Ok(Some(txt)) => println!("{}\n    {}", "OK".green(), txt),
+            ComponentState::Ok(Some(txt)) => println!("{}({})", "OK".green(), txt.bright_cyan()),
             ComponentState::Info(txt) => println!("{}\n    {}", "INFO".blue(), txt),
             ComponentState::Warning(txt) => println!("{}\n    {}", "WARNING".yellow(), txt),
             ComponentState::Error(txt) => println!("{}\n    {}", "ERROR".red(), txt),
@@ -95,6 +95,22 @@ impl<T> ResultExt for Option<T> {
     fn finish_check<'a>(self, check: OngoingReport<'a>) -> Self {
         match &self {
             Some(_) => check.ok(),
+            None => check.error(""),
+        }
+
+        self
+    }
+}
+
+pub trait OptionExt: Sized {
+    fn report_with_some(self, report: &mut HealthReport, name: impl Into<String>) -> Self;
+}
+
+impl<T: Display> OptionExt for Option<T> {
+    fn report_with_some(self, report: &mut HealthReport, name: impl Into<String>) -> Self {
+        let check = report.start(name);
+        match &self {
+            Some(item) => check.ok_with(item.to_string()),
             None => check.error(""),
         }
 
