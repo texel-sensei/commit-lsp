@@ -106,6 +106,23 @@ If a host matches the origin URL of the repository origin,
 then commit-lsp will run the command defined in `credentials_command`
 to access the credentials.
 
+The type of issue tracker is used will be guessed from the git remote URL.
+But this kind of automatism might not work for all projects.
+This automatism can be disabled by setting a specific tracker type via `issue_tracker_type`:
+
+```toml
+[[remotes]]
+host = "git.work.example"
+credentials_command = ["pass", "show", "development/work/gitlab"]
+issue_tracker_type = "Gitlab"
+```
+
+Supported values are `Gitlab` and `AzureDevOps`.
+
+It is also possible to overwrite the URL of the remote via `issue_tracker_url`.
+Both `issue_tracker_type` and `issue_tracker_url` are available
+in both user config and repository config.
+
 ### AzureDevOps
 
 The credentials command should print a Personal Access Token (PAT) to stdout.

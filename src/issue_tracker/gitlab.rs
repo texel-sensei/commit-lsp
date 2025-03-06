@@ -4,7 +4,7 @@ use secure_string::SecureString;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
-use super::{IssueTrackerAdapter, Ticket, UpstreamError};
+use super::{IssueTrackerAdapter, Ticket, UpstreamError, builder::TrackerConfig};
 
 pub struct Gitlab {
     client: OnceCell<gitlab::AsyncGitlab>,
@@ -14,13 +14,14 @@ pub struct Gitlab {
 }
 
 impl Gitlab {
-    pub fn new(token: SecureString, host: String, project: String) -> Self {
-        Self {
+    pub fn new(config: TrackerConfig) -> Option<Self> {
+        let project = format!("{}/{}", config.url.owner?, config.url.name);
+        Some(Self {
             client: Default::default(),
-            host,
-            token,
+            host: config.url.host?,
+            token: config.secret?,
             project,
-        }
+        })
     }
 
     async fn client(&self) -> Result<&gitlab::AsyncGitlab, UpstreamError> {

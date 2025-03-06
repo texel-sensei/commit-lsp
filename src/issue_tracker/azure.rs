@@ -3,7 +3,7 @@ use reqwest::Method;
 use secure_string::SecureString;
 use serde::Serialize;
 
-use super::{IssueTrackerAdapter, Ticket, UpstreamError};
+use super::{IssueTrackerAdapter, Ticket, UpstreamError, builder::TrackerConfig};
 
 pub struct AzureDevops {
     pat: SecureString,
@@ -13,13 +13,13 @@ pub struct AzureDevops {
 }
 
 impl AzureDevops {
-    pub fn new(pat: SecureString, organization: String, project: String) -> Self {
-        Self {
+    pub fn new(config: TrackerConfig) -> Option<Self> {
+        Some(Self {
             client: reqwest::Client::new(),
-            pat,
-            organization,
-            project,
-        }
+            pat: config.secret?,
+            organization: config.url.organization?,
+            project: config.url.owner?,
+        })
     }
 
     fn base_url(&self) -> String {

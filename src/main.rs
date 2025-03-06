@@ -3,7 +3,7 @@ use std::{fs::File, io::Read, process::ExitCode, sync::Mutex};
 use clap::Parser as _;
 use cli::Cli;
 use git::guess_repo_url;
-use healthcheck::HealthReport;
+use healthcheck::{ComponentState, HealthReport, OptionExt, ResultExt};
 use issue_tracker::IssueTracker;
 use tracing::{info, trace};
 
@@ -108,13 +108,46 @@ fn initialize_issue_tracker(
     health.set_context("Issue Tracker");
 
     let check = health.start("retrieve repo url");
-    let url_info = guess_repo_url();
-    match &url_info {
+    let remote_url = guess_repo_url();
+    match &remote_url {
         Some(url) => check.ok_with(url.to_string()),
         None => check.error("Failed to get remote url"),
     }
-    let url_info = url_info?;
+    let remote_url = remote_url?;
 
-    info!("Using git url '{url_info}'");
-    IssueTracker::guess_from_remote(url_info, &config, health)
+    info!("Using git url '{remote_url}'");
+    let mut builder = issue_tracker::Builder::new(remote_url.clone());
+
+    let remote_config = config.remote_specific_configuration(&remote_url.to_string());
+    health.report(
+        "Check for remote specific user config",
+        if remote_config
+            .is_some() { ComponentState::Ok(None) } else { ComponentState::Info("None found".into()) },
+    );
+
+    let mut do_guess = true;
+
+    if let Some(remote_config) = remote_config {
+        let report = health.start("Check for configured issue tracker");
+
+        if let Some(tracker) = remote_config.issue_tracker_type {
+            report.ok_with(tracker.to_string());
+            builder.tracker_type = Some(tracker);
+            do_guess = false;
+        } else {
+            report.info("None configured, continue to guess");
+        }
+    }
+
+    if do_guess {
+        builder
+            .tracker_type
+            .report_with_some(health, "Guess used issue tracker");
+    }
+
+    if let Some(remote_config) = remote_config {
+        builder.add_remote_config(health, remote_config.clone());
+    }
+
+    builder.build(health)
 }

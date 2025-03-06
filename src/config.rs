@@ -7,6 +7,7 @@ use tracing::info;
 use crate::{
     git::get_repo_root,
     healthcheck::{HealthReport, ResultExt},
+    issue_tracker::IssueTrackerType,
 };
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -17,13 +18,19 @@ pub struct User {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Remote {
     pub host: String,
-    pub credentials_command: Vec<String>,
+    pub credentials_command: Option<Vec<String>>,
+
+    pub issue_tracker_type: Option<IssueTrackerType>,
+    pub issue_tracker_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Repository {
     pub types: Vec<CommitElementDefinition>,
     pub scopes: Vec<CommitElementDefinition>,
+
+    pub issue_tracker_type: Option<IssueTrackerType>,
+    pub issue_tracker_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -63,6 +70,14 @@ impl User {
         toml::from_str(&text)
             .report(health, "parse config")
             .expect("Failed to parse config!")
+    }
+
+    /// Finds remote specific configuration for a given url, if it exists.
+    ///
+    /// Matching happens via a simple substring match of the `host` setting.
+    /// The first host that is contained in the url is picked.
+    pub fn remote_specific_configuration(&self, url: &str) -> Option<&Remote> {
+        self.remotes.iter().find(|r| url.contains(&r.host))
     }
 }
 
