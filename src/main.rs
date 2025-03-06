@@ -121,8 +121,11 @@ fn initialize_issue_tracker(
     let remote_config = config.remote_specific_configuration(&remote_url.to_string());
     health.report(
         "Check for remote specific user config",
-        if remote_config
-            .is_some() { ComponentState::Ok(None) } else { ComponentState::Info("None found".into()) },
+        if remote_config.is_some() {
+            ComponentState::Ok(None)
+        } else {
+            ComponentState::Info("None found".into())
+        },
     );
 
     let mut do_guess = true;

@@ -23,13 +23,14 @@ planned but not yet implemented (❌):
 - ❌ Style checking if the commit follows the conventional commit format
 - ✅ Autocompletion for commit types and scopes with project specific config
     - Never guess again if your team uses `doc` or `docs` for documentation commits
-- 🚧 Autocompletion for work item references
+- ✅ Autocompletion for work item references
     - commit-lsp queries for Issues/Tickets/Work Items assigned to your local git user
       and provides completion for those assigned to you
     - Support for:
-        - ❌ github
+        - ✅ Github
         - ✅ AzureDevOps
-        - ✅ gitlab
+        - ✅ Gitlab
+        - ❌ Jira
 
 ## Installation
 
@@ -117,7 +118,7 @@ credentials_command = ["pass", "show", "development/work/gitlab"]
 issue_tracker_type = "Gitlab"
 ```
 
-Supported values are `Gitlab` and `AzureDevOps`.
+Supported values are `Github`, `Gitlab` and `AzureDevOps`.
 
 It is also possible to overwrite the URL of the remote via `issue_tracker_url`.
 Both `issue_tracker_type` and `issue_tracker_url` are available
@@ -135,6 +136,11 @@ The AzureDevOps Organization and Project are parsed from the URL of the `origin`
 
 The credentials_command should print an access token to stdout with issue read access.
 Autocompletion will use all open issues of the current project.
+The project name and owner are parsed from the `origin` git remote URL.
+
+### Github
+
+Currently only public repositories are supported.
 The project name and owner are parsed from the `origin` git remote URL.
 
 ## Troubleshooting

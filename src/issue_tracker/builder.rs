@@ -5,14 +5,20 @@ use secure_string::SecureString;
 use serde::Deserialize;
 use tracing::warn;
 
-use crate::{config::Remote, healthcheck::{HealthReport, ResultExt}};
+use crate::{
+    config::Remote,
+    healthcheck::{HealthReport, ResultExt},
+};
 
-use super::{azure::AzureDevops, demo::DemoAdapter, IssueTracker, IssueTrackerAdapter};
+use super::{
+    IssueTracker, IssueTrackerAdapter, azure::AzureDevops, demo::DemoAdapter, github::Github,
+};
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum IssueTrackerType {
     Demo,
     Gitlab,
+    Github,
     AzureDevOps,
 }
 
@@ -24,6 +30,7 @@ impl Display for IssueTrackerType {
             match self {
                 IssueTrackerType::Demo => "<DEMO>",
                 IssueTrackerType::Gitlab => "Gitlab",
+                IssueTrackerType::Github => "Github",
                 IssueTrackerType::AzureDevOps => "Azure DevOps",
             }
         )
@@ -38,6 +45,7 @@ impl IssueTrackerType {
 
         match url.host.as_ref()?.as_str() {
             "ssh.dev.azure.com" | "dev.azure.com" => Some(Self::AzureDevOps),
+            "github.com" => Some(Self::Github),
             host if host.contains("gitlab") => Some(Self::Gitlab),
             _ => None,
         }
@@ -98,8 +106,11 @@ impl Builder {
         };
 
         let adapter: Box<dyn IssueTrackerAdapter> = match self.tracker_type? {
-            IssueTrackerType::Demo => Box::new(DemoAdapter::new(std::env::var("COMMIT_LSP_DEMO_FOLDER").unwrap().into())),
+            IssueTrackerType::Demo => Box::new(DemoAdapter::new(
+                std::env::var("COMMIT_LSP_DEMO_FOLDER").unwrap().into(),
+            )),
             IssueTrackerType::Gitlab => Box::new(super::gitlab::Gitlab::new(cfg)?),
+            IssueTrackerType::Github => Box::new(Github::new(cfg)?),
             IssueTrackerType::AzureDevOps => Box::new(AzureDevops::new(cfg)?),
         };
 

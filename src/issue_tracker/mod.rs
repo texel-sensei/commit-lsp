@@ -8,6 +8,7 @@ pub use builder::IssueTrackerType;
 
 mod azure;
 mod demo;
+mod github;
 mod gitlab;
 
 pub struct IssueTracker {
