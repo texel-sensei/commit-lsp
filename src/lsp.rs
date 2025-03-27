@@ -43,8 +43,8 @@ impl LanguageServer for Backend {
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
-                name: "commit-lsp".to_owned(),
-                version: Some("0.0.1".to_owned()),
+                name: env!("CARGO_PKG_NAME").to_owned(),
+                version: Some(env!("CARGO_PKG_VERSION").to_owned()),
             }),
         })
     }
