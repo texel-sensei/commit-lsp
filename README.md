@@ -1,11 +1,6 @@
 # commit-lsp
 
-Language Server for git commit messages.
-
-> [!WARNING]
-> This project is in early development.
-> Expect bugs and frequent breaking changes!
-
+Language Server for commit messages.
 
 You got editor smarts for programming, editing config files and even writing prose.
 Why stop at writing commit messages?
@@ -37,7 +32,7 @@ planned but not yet implemented (❌):
 Currently only installation from source is supported.
 To build commit-lsp make sure to have the latest rust toolchain installed and run:
 
-    cargo install --locked --git https://github.com/texel-sensei/commit-lsp
+    cargo install --locked commit-lsp
 
 ## Editor integration
 
