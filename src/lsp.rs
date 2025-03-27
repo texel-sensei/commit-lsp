@@ -93,7 +93,7 @@ impl LanguageServer for Backend {
         {
             let mut analysis = self.analysis.lock().unwrap();
 
-            analysis.update_text(&text);
+            analysis.update_text(text);
             diags = analysis
                 .all_diagnostics()
                 .into_iter()

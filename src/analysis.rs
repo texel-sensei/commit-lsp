@@ -327,7 +327,7 @@ mod test {
 
         assert_eq!(ty, "feat");
         assert_eq!(scope, Some("lsp"));
-        assert_eq!(breaking, false);
+        assert!(!breaking);
     }
 
     #[test]
@@ -338,7 +338,7 @@ mod test {
 
         assert_eq!(ty, "feat");
         assert_eq!(scope, None);
-        assert_eq!(breaking, false);
+        assert!(!breaking);
     }
 
     #[test]
@@ -349,7 +349,7 @@ mod test {
 
         assert_eq!(ty, "feat");
         assert_eq!(scope, Some("lsp"));
-        assert_eq!(breaking, true);
+        assert!(breaking);
     }
 
     #[test]

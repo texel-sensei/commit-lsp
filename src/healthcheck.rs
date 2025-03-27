@@ -75,14 +75,14 @@ pub trait ResultExt: Sized {
         self.finish_check(check)
     }
 
-    fn finish_check<'a>(self, check: OngoingReport<'a>) -> Self;
+    fn finish_check(self, check: OngoingReport<'_>) -> Self;
 }
 
 impl<V, E> ResultExt for Result<V, E>
 where
     E: Error,
 {
-    fn finish_check<'a>(self, check: OngoingReport<'a>) -> Self {
+    fn finish_check(self, check: OngoingReport<'_>) -> Self {
         match &self {
             Ok(_) => check.ok(),
             Err(e) => check.error(e.to_string()),
@@ -92,7 +92,7 @@ where
 }
 
 impl<T> ResultExt for Option<T> {
-    fn finish_check<'a>(self, check: OngoingReport<'a>) -> Self {
+    fn finish_check(self, check: OngoingReport<'_>) -> Self {
         match &self {
             Some(_) => check.ok(),
             None => check.error(""),
@@ -124,7 +124,7 @@ pub struct OngoingReport<'a> {
     component: String,
 }
 
-impl<'a> OngoingReport<'a> {
+impl OngoingReport<'_> {
     pub fn complete(self, state: ComponentState) {
         self.health.report(self.component, state);
     }

@@ -37,12 +37,14 @@ impl IssueTrackerAdapter for DemoAdapter {
             let Ok(entry) = entry else {
                 continue;
             };
-            entry
+            if let Some(i) = entry
                 .path()
                 .file_name()
                 .and_then(|n| n.to_str())
                 .and_then(|n| n.parse().ok())
-                .map(|i| ids.push(i));
+            {
+                ids.push(i)
+            }
         }
 
         Ok(ids)
