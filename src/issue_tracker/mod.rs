@@ -3,6 +3,9 @@ use std::{collections::BTreeMap, sync::Mutex};
 use async_trait::async_trait;
 
 mod builder;
+use ::gitlab::GitlabError;
+use ::gitlab::RestError;
+use ::gitlab::api::ApiError;
 pub use builder::Builder;
 pub use builder::IssueTrackerType;
 
@@ -90,11 +93,60 @@ impl Ticket {
 }
 
 #[derive(Debug)]
-pub enum UpstreamError {}
+pub enum UpstreamError {
+    /// Input/Output with the remote failed (e.g. no internet connection).
+    Io(std::io::Error),
+
+    /// Authentication failed
+    Authentication,
+
+    /// Unspecified other errors.
+    Other(String),
+}
 
 impl std::fmt::Display for UpstreamError {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unreachable!()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use UpstreamError as U;
+        match self {
+            U::Io(underlying) => write!(f, "IO Error interacting with remote: {underlying}"),
+            U::Authentication => write!(f, "Authentication failed"),
+            U::Other(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
+impl From<reqwest::Error> for UpstreamError {
+    fn from(value: reqwest::Error) -> Self {
+        Self::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            value.without_url(),
+        ))
+    }
+}
+
+impl From<ApiError<RestError>> for UpstreamError {
+    fn from(value: ApiError<RestError>) -> Self {
+        match value {
+            ApiError::Client {
+                source: RestError::AuthError { .. },
+            } => Self::Authentication,
+            ApiError::Auth { .. } => Self::Authentication,
+            ApiError::Client {
+                source: RestError::Communication { source },
+            } => source.into(),
+            _ => Self::Other(value.to_string()),
+        }
+    }
+}
+
+impl From<GitlabError> for UpstreamError {
+    fn from(value: GitlabError) -> Self {
+        match value {
+            GitlabError::AuthError { .. } => Self::Authentication,
+            GitlabError::Communication { source } => source.into(),
+            GitlabError::Api { source } => source.into(),
+            _ => Self::Other(value.to_string()),
+        }
     }
 }
 

@@ -43,13 +43,19 @@ impl IssueTrackerAdapter for AzureDevops {
             .send()
             .await;
 
-        let response: serde_json::Value = result.unwrap().json().await.unwrap();
+        let response: serde_json::Value = result?.json().await?;
 
         let items: Vec<_> = response["workItems"]
             .as_array()
-            .unwrap()
+            .ok_or(UpstreamError::Other(
+                "Unexpected response format".to_owned(),
+            ))?
             .iter()
-            .map(|i| i["id"].as_u64().unwrap())
+            .map(|i| {
+                i["id"]
+                    .as_u64()
+                    .unwrap_or_else(|| panic!("Got ID that is not an integer! ({})", i["id"]))
+            })
             .collect();
 
         Ok(items)
@@ -71,15 +77,20 @@ impl IssueTrackerAdapter for AzureDevops {
             .send()
             .await;
 
-        let response: serde_json::Value = result.unwrap().json().await.unwrap();
+        let response: serde_json::Value = result?.json().await?;
         let items: Vec<_> = response["value"]
             .as_array()
-            .unwrap()
+            .ok_or(UpstreamError::Other(
+                "Unexpected response format".to_owned(),
+            ))?
             .iter()
             .map(|i| {
                 Ticket::new(
-                    i["id"].as_u64().unwrap(),
-                    i["fields"]["System.Title"].as_str().unwrap().to_owned(),
+                    i["id"].as_u64().expect("Item ID is not an integer"),
+                    i["fields"]["System.Title"]
+                        .as_str()
+                        .expect("Item is missing a title")
+                        .to_owned(),
                     i["fields"]["System.Description"]
                         .as_str()
                         // We need to handle the case where a work item has no description,

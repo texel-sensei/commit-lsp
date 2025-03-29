@@ -4,8 +4,8 @@ use tower_lsp::lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Documentation,
     Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult,
-    InitializedParams, MarkedString, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
-    TextDocumentSyncKind, WorkDoneProgressOptions,
+    InitializedParams, MarkedString, MessageType, ServerCapabilities, ServerInfo,
+    TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
 };
 
 use tower_lsp::jsonrpc::Result;
@@ -52,9 +52,19 @@ impl LanguageServer for Backend {
     async fn initialized(&self, _: InitializedParams) {
         if let Some(tracker) = &self.tracker {
             let tracker = tracker.clone();
+            let client = self.client.clone();
             tokio::spawn(async move {
                 // Retrieve list of tickets after initialization to fill ticket cache.
-                let _ = tracker.request_ticket_information().await;
+                let result = tracker.request_ticket_information().await;
+
+                if let Err(err) = result {
+                    client
+                        .log_message(
+                            MessageType::WARNING,
+                            format!("Failed to retrieve ticket information: {err}"),
+                        )
+                        .await;
+                }
             });
         }
     }
@@ -146,10 +156,18 @@ impl LanguageServer for Backend {
             }
             ItemKind::Ref(id) => {
                 if let Some(tracker) = &self.tracker {
-                    let ticket = tracker
-                        .get_ticket_details(id)
-                        .await
-                        .expect("To connect to remote");
+                    let ticket = match tracker.get_ticket_details(id).await {
+                        Ok(ticket) => ticket,
+                        Err(err) => {
+                            self.client
+                                .log_message(
+                                    MessageType::WARNING,
+                                    format!("Failed to retrieve ticket information: {err}"),
+                                )
+                                .await;
+                            return Ok(None);
+                        }
+                    };
 
                     let text = ticket
                         .map(|t| format!("# {}\n\n{}", t.title(), t.text()))

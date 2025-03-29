@@ -17,7 +17,7 @@ clap = { version = "4.5.4", features = ["derive"] }
 colored = "2.1.0"
 directories = "5.0.1"
 git-url-parse = "0.4.4"
-gitlab = "0.1610.0"
+gitlab = "0.1710.0"
 regex = "1.10.4"
 reqwest = { version = "0.12.3", features = ["json"] }
 secure-string = "0.3.0"

@@ -53,7 +53,7 @@ impl IssueTrackerAdapter for Github {
         // TODO(texel,2025-03-27): We get all the title and body information here but the current
         // API prevents us from returning it directly. The API could be refactored, so this
         // function can return Tickets or u64 to avoid redoing some requests.
-        let response: Vec<ListIssuesResponse> = result.unwrap().json().await.unwrap();
+        let response: Vec<ListIssuesResponse> = result?.json().await?;
 
         Ok(response.into_iter().map(|i| i.number).collect())
     }
@@ -76,7 +76,7 @@ impl IssueTrackerAdapter for Github {
                 .send()
                 .await;
 
-            let response: ListIssuesResponse = result.unwrap().json().await.unwrap();
+            let response: ListIssuesResponse = result?.json().await?;
 
             tickets.push(Ticket {
                 id: *id,

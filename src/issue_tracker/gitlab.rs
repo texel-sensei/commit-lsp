@@ -25,16 +25,14 @@ impl Gitlab {
     }
 
     async fn client(&self) -> Result<&gitlab::AsyncGitlab, UpstreamError> {
-        self.client
+        Ok(self
+            .client
             .get_or_try_init(|| async {
-                Ok(
-                    gitlab::GitlabBuilder::new(&self.host, self.token.unsecure())
-                        .build_async()
-                        .await
-                        .expect("Failed to connect to gitlab"),
-                )
+                gitlab::GitlabBuilder::new(&self.host, self.token.unsecure())
+                    .build_async()
+                    .await
             })
-            .await
+            .await?)
     }
 }
 
@@ -47,10 +45,7 @@ impl IssueTrackerAdapter for Gitlab {
             .build()
             .expect("Failed to build request");
 
-        let issues: Vec<Issue> = request
-            .query_async(self.client().await?)
-            .await
-            .expect("Expected to get issues");
+        let issues: Vec<Issue> = request.query_async(self.client().await?).await?;
 
         Ok(issues.into_iter().map(|i| i.iid).collect())
     }
@@ -62,10 +57,7 @@ impl IssueTrackerAdapter for Gitlab {
             .build()
             .expect("Failed to build request");
 
-        let issues: Vec<Issue> = request
-            .query_async(self.client().await?)
-            .await
-            .expect("Expected to get issues");
+        let issues: Vec<Issue> = request.query_async(self.client().await?).await?;
 
         Ok(issues
             .into_iter()
