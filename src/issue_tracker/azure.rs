@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use reqwest::Method;
+use reqwest::{Method, StatusCode};
 use secure_string::SecureString;
 use serde::Serialize;
 
@@ -34,16 +34,22 @@ impl AzureDevops {
 impl IssueTrackerAdapter for AzureDevops {
     async fn list_ticket_numbers(&self) -> Result<Vec<u64>, UpstreamError> {
         let query = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [Assigned To] = @me AND [System.Id] in (@MyRecentActivity)".to_owned();
-        let result = self
+        let response = self
             .client
             .request(Method::POST, format!("{}/wit/wiql", self.base_url()))
             .query(&[("api-version", "7.0")])
             .json(&QueryRequest { query })
+            .header("Accept", "application/json")
             .basic_auth("", Some(self.pat.unsecure()))
             .send()
-            .await;
+            .await?;
 
-        let response: serde_json::Value = result?.json().await?;
+        if response.status() == StatusCode::UNAUTHORIZED {
+            return Err(UpstreamError::Authentication);
+        }
+
+
+        let response: serde_json::Value = response.json().await?;
 
         let items: Vec<_> = response["workItems"]
             .as_array()
