@@ -110,10 +110,10 @@ fn initialize_issue_tracker(
     let check = health.start("retrieve repo url");
     let remote_url = guess_repo_url();
     match &remote_url {
-        Some(url) => check.ok_with(url.to_string()),
-        None => check.error("Failed to get remote url"),
+        Ok(url) => check.ok_with(url.to_string()),
+        Err(_) => check.error("Failed to get remote url"),
     }
-    let remote_url = remote_url?;
+    let remote_url = remote_url.ok()?;
 
     info!("Using git url '{remote_url}'");
     let mut builder = issue_tracker::Builder::new(remote_url.clone());

@@ -1,8 +1,10 @@
+use std::string::FromUtf8Error;
 use std::{collections::BTreeMap, sync::Mutex};
 
 use async_trait::async_trait;
 
 mod builder;
+use git_url_parse::GitUrlParseError;
 use ::gitlab::GitlabError;
 use ::gitlab::RestError;
 use ::gitlab::api::ApiError;
@@ -112,6 +114,24 @@ impl std::fmt::Display for UpstreamError {
             U::Authentication => write!(f, "Authentication failed"),
             U::Other(msg) => write!(f, "{msg}"),
         }
+    }
+}
+
+impl From<std::io::Error> for UpstreamError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+impl From<GitUrlParseError> for UpstreamError {
+    fn from(value: GitUrlParseError) -> Self {
+        Self::Other(value.to_string())
+    }
+}
+
+impl From<FromUtf8Error> for UpstreamError {
+    fn from(value: FromUtf8Error) -> Self {
+        Self::Other(value.to_string())
     }
 }
 
