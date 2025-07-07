@@ -42,7 +42,7 @@ impl State {
     pub fn all_diagnostics(&self) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
-        if self.lines.len() > 1 && !self.lines[1].is_empty() {
+        if self.lines.len() > 1 && !self.lines[1].is_empty() && !self.lines[1].starts_with('#') {
             diagnostics.push(Diagnostic::new(
                 self.full_line(1),
                 "The second line should be empty!",
