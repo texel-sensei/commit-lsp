@@ -26,7 +26,9 @@ pub struct Remote {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Repository {
+    #[serde(default)]
     pub types: Vec<CommitElementDefinition>,
+    #[serde(default)]
     pub scopes: Vec<CommitElementDefinition>,
 
     pub issue_tracker_type: Option<IssueTrackerType>,
