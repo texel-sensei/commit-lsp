@@ -39,27 +39,39 @@ To build commit-lsp make sure to have the latest rust toolchain installed and ru
 Since commit-lsp uses the Language Server Protocol,
 it should be compatible with every editor supporting it.
 
-Commit-lsp is tested with neovim.
+Commit-lsp is mainly tested with neovim.
+
+### [neovim](https://neovim.io)
+
 To integrate commit-lsp, copy the executable somewhere into PATH (or run `cargo install`) and add
 the following into your `init.lua`:
 
 ```lua
-if vim.fn.executable("commit-lsp") == 1 then
-	vim.api.nvim_create_autocmd(
-		"FileType",
-		{
-			group=vim.api.nvim_create_augroup("CommitLspStart", {}),
-			pattern="gitcommit",
-			callback=function()
-				local client = vim.lsp.start_client {
-					cmd = { "commit-lsp", "run" },
-				}
-				vim.lsp.buf_attach_client(0, client)
-			end
-		}
-	)
-end
+vim.lsp.config("commit-lsp", {
+    cmd = { "commit-lsp", "run" },
+    root_markers = { '.git' },
+    filetypes = { "gitcommit" }
+})
 
+if vim.fn.executable("commit-lsp") == 1 then
+    vim.lsp.enable("commit-lsp")
+end
+```
+
+### [helix](https://helix-editor.com/)
+
+Copy the commit-lsp executable somewhere into PATH
+and dd the following to your `languages.toml`:
+
+```toml
+[language-server.commit-lsp]
+command = "commit-lsp"
+args = ["run"]
+
+[[language]]
+name = "git-commit"
+file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }, { glob = "COMMIT_EDITMSG-*.txt" }]
+language-servers = [ "commit-lsp" ]
 ```
 
 ## Connecting to a remote issue tracker
@@ -96,6 +108,10 @@ credentials_command = ["pass", "show", "development/hobby/gitlab"]
 [[remotes]]
 host = "gitlab.work.example.com"
 credentials_command = ["pass", "show", "development/work/gitlab"]
+
+[[remotes]]
+host = "github.com"
+credentials_command = ["gh", "auth", "token"]
 ```
 
 If a host matches the origin URL of the repository origin,
@@ -135,8 +151,13 @@ The project name and owner are parsed from the `origin` git remote URL.
 
 ### Github
 
-Currently only public repositories are supported.
+The credentials_command should print an access token to stdout,
+e.g. via `gh auth token`.
 The project name and owner are parsed from the `origin` git remote URL.
+
+If a token is given,
+then issues assigned to the token owner are used in auto completion.
+Without one issues assigned to the repo owner are completed.
 
 ## Troubleshooting
 
