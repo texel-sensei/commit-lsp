@@ -1,0 +1,18 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    name: Bump Homebrew formula
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push changes to the repo
+    steps:
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-path: Formula/commit-lsp.rb
+        env:
+          COMMITTER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
