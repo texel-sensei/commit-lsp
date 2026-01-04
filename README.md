@@ -29,8 +29,15 @@ planned but not yet implemented (❌):
 
 ## Installation
 
-Currently only installation from source is supported.
-To build commit-lsp make sure to have the latest rust toolchain installed and run:
+### Homebrew
+
+```bash
+brew install texel-sensei/commit-lsp/commit-lsp
+```
+
+### From source
+
+To build commit-lsp from source, make sure to have the latest rust toolchain installed and run:
 
     cargo install --locked commit-lsp
 
