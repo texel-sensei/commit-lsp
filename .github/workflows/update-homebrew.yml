@@ -14,5 +14,6 @@ jobs:
       - uses: mislav/bump-homebrew-formula-action@v3
         with:
           formula-path: Formula/commit-lsp.rb
+          homebrew-tap: texel-sensei/commit-lsp
         env:
           COMMITTER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
