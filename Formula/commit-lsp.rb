@@ -1,8 +1,8 @@
 class CommitLsp < Formula
   desc "LSP Server for providing linting and autocompletion for git commit messages"
   homepage "https://github.com/texel-sensei/commit-lsp"
-  url "https://github.com/texel-sensei/commit-lsp/archive/refs/tags/v0.2.0.tar.gz"
-  sha256 "cb49ee98375f78be4359bb62e2b970ce3bdc7f8cb3ae17b6e8ed9b9ddd2e75d2"
+  url "https://github.com/texel-sensei/commit-lsp/archive/refs/tags/v0.2.1.tar.gz"
+  sha256 "bdf753d4b0ac047165df033f1e7b3ae84ea2f25c92a249790e44751e2c4312af"
   license "MIT"
 
   depends_on "rust" => :build
