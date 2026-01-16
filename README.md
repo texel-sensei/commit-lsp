@@ -32,7 +32,8 @@ planned but not yet implemented (❌):
 ### Homebrew
 
 ```bash
-brew install texel-sensei/commit-lsp/commit-lsp
+brew tap texel-sensei/commit-lsp https://github.com/texel-sensei/commit-lsp
+brew install commit-lsp
 ```
 
 ### From source
