@@ -2,7 +2,7 @@ use std::{fs::File, io::Read, process::ExitCode, sync::Mutex};
 
 use clap::Parser as _;
 use cli::Cli;
-use git::guess_repo_url;
+use git::{GitAuthor, get_repo_authors, guess_repo_url};
 use healthcheck::{ComponentState, HealthReport, OptionExt, ResultExt};
 use issue_tracker::IssueTracker;
 use tracing::{info, trace};
@@ -41,8 +41,9 @@ async fn main() -> ExitCode {
             let repo_config = config::Repository::load_default_file(&mut health);
             trace!("Using config: {:?}", repo_config);
             let remote = initialize_issue_tracker(&user_config, &mut health);
+            let authors = initialize_repo_authors(&mut health);
             let analysis = analysis::State::new(repo_config);
-            lsp::run_stdio(analysis, remote).await;
+            lsp::run_stdio(analysis, remote, authors).await;
         }
         cli::Action::Lint { file } => {
             let mut health = HealthReport::silent();
@@ -153,4 +154,19 @@ fn initialize_issue_tracker(
     }
 
     builder.build(health)
+}
+
+fn initialize_repo_authors(health: &mut HealthReport) -> Option<Box<[GitAuthor]>> {
+    health.set_context("Repo Authors");
+
+    let report = health.start("Get repo authors");
+
+    match get_repo_authors() {
+        Ok(authors) => Some(authors),
+        Err(error) => {
+            report.warn(format!("failed to get repo authors: {error}"));
+
+            None
+        }
+    }
 }
