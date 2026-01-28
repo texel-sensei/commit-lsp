@@ -58,6 +58,22 @@ impl State {
         let cursor = pos.character as usize;
         let line = self.lines.get(pos.line as usize)?;
 
+        if line.starts_with("Co-authored-by:") || line.starts_with("Signed-off-by:") {
+            return Some(Item {
+                kind: ItemKind::Trailer,
+                text: line.clone(),
+                range: self.full_line(pos.line),
+            });
+        }
+
+        if line.is_empty() {
+            return Some(Item {
+                kind: ItemKind::EmptyLine,
+                text: String::new(),
+                range: self.full_line(pos.line),
+            });
+        }
+
         // find word under cursor
         let start = line[..cursor]
             .rfind(|c: char| !c.is_alphanumeric() && c != '#')
@@ -235,6 +251,10 @@ pub enum ItemKind {
     Scope,
     /// A reference to a ticket/issue/etc
     Ref(u64),
+    /// An empty line
+    EmptyLine,
+    /// A trailer (e.g. `Signed-off-by:` or `Co-authored-by:`)
+    Trailer,
 }
 
 #[cfg(test)]

@@ -1,10 +1,13 @@
 use git_url_parse::GitUrl;
+use serde::Deserialize;
 use std::{
-    path::{Path, PathBuf}, process::Command
+    io::BufRead,
+    path::{Path, PathBuf},
+    process::Command,
 };
 use tracing::info;
 
-use crate::issue_tracker::UpstreamError;
+use crate::{issue_tracker::UpstreamError, regex};
 
 /// Get the url of the `origin` remote.
 pub fn guess_repo_url() -> Result<GitUrl, UpstreamError> {
@@ -85,4 +88,62 @@ pub fn get_repo_root() -> Result<PathBuf, UpstreamError> {
     }
 
     Ok(PathBuf::from(base_worktree?))
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct GitAuthor {
+    pub name: String,
+    pub email: String,
+    pub commit_count: usize,
+}
+
+impl GitAuthor {
+    pub fn from_git_output(line: &str) -> Result<Self, UpstreamError> {
+        let re = regex!(r"^\s*(?P<count>\d+)\s+(?P<name>.*) <(?P<email>.*)>$");
+
+        let captures = re.captures(line).ok_or(UpstreamError::Other(
+            "Failed to parse git output".to_string(),
+        ))?;
+
+        Ok(Self {
+            name: captures
+                .name("name")
+                .expect("there should be a `name` capture")
+                .as_str()
+                .to_string(),
+            email: captures
+                .name("email")
+                .expect("there should be an `email` capture")
+                .as_str()
+                .to_string(),
+            commit_count: captures
+                .name("count")
+                .expect("there should be a `count` capture")
+                .as_str()
+                .parse()
+                .map_err(|_| {
+                    UpstreamError::Other("failed to parse git commit count".to_string())
+                })?,
+        })
+    }
+}
+
+pub fn get_repo_authors() -> Result<Box<[GitAuthor]>, UpstreamError> {
+    let authors_command = Command::new("git")
+        .args(["shortlog", "--summary", "--numbered", "--email", "--all"])
+        .output()?;
+
+    if !authors_command.status.success() {
+        return Err(UpstreamError::Other("Not in git repo".into()));
+    }
+
+    authors_command
+        .stdout
+        .lines()
+        .map(|maybe_line| {
+            maybe_line
+                .map_err(UpstreamError::Io)
+                .and_then(|line| GitAuthor::from_git_output(&line))
+        })
+        .collect()
 }
