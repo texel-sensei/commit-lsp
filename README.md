@@ -84,11 +84,7 @@ language-servers = [ "commit-lsp" ]
 
 ## Connecting to a remote issue tracker
 
-The issue tracker integration is still very bare bones and work in progress.
-
-Currently only AzureDevOps and Gitlab are supported.
-
-The integration is controlled via a config file in the users home directory.
+Integration of remote issue trackers is controlled via a config file in the users home directory.
 This config defines cli commands to provide credentials for the issue tracker.
 
 The config file is located in the following places:
