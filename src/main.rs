@@ -91,7 +91,7 @@ fn analyse_commit(config: config::Repository, text: &str) -> ExitCode {
     let diagnostics = state.all_diagnostics();
 
     for diag in &diagnostics {
-        println!("{}", diag);
+        println!("{diag}");
     }
 
     if diagnostics.is_empty() {
