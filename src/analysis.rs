@@ -30,13 +30,12 @@ impl State {
     pub fn update_text(&mut self, new_text: &str) {
         self.lines = new_text.lines().map(ToOwned::to_owned).collect();
 
-        if let Some(header) = self.lines.first() {
-            if let Some((ty, scope, _breaking)) = parse_header(header) {
+        if let Some(header) = self.lines.first()
+            && let Some((ty, scope, _breaking)) = parse_header(header) {
                 self.ty = Some(self.partial_line(0, substr_offset(header, ty)));
 
                 self.scope = scope.map(|txt| self.partial_line(0, substr_offset(header, txt)));
             }
-        }
     }
 
     pub fn all_diagnostics(&self) -> Vec<Diagnostic> {

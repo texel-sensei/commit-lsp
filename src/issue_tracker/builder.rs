@@ -38,7 +38,7 @@ impl Display for IssueTrackerType {
 }
 
 impl IssueTrackerType {
-    pub fn guess_from_url(url: GitUrl) -> Option<Self> {
+    pub fn guess_from_url(url: &GitUrl) -> Option<Self> {
         if cfg!(debug_assertions) && std::env::var("COMMIT_LSP_DEMO_FOLDER").is_ok() {
             return Some(Self::Demo);
         }
@@ -66,7 +66,7 @@ pub(super) struct TrackerConfig {
 impl Builder {
     pub fn new(url: GitUrl) -> Self {
         Self {
-            tracker_type: IssueTrackerType::guess_from_url(url.clone()),
+            tracker_type: IssueTrackerType::guess_from_url(&url),
             url,
             credential_command: None,
         }

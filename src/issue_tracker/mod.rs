@@ -137,8 +137,7 @@ impl From<FromUtf8Error> for UpstreamError {
 
 impl From<reqwest::Error> for UpstreamError {
     fn from(value: reqwest::Error) -> Self {
-        Self::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Self::Io(std::io::Error::other(
             value.without_url(),
         ))
     }
