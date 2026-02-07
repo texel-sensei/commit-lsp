@@ -48,7 +48,6 @@ impl IssueTrackerAdapter for AzureDevops {
             return Err(UpstreamError::Authentication);
         }
 
-
         let response: serde_json::Value = response.json().await?;
 
         let items: Vec<_> = response["workItems"]

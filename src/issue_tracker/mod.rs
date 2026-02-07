@@ -4,12 +4,12 @@ use std::{collections::BTreeMap, sync::Mutex};
 use async_trait::async_trait;
 
 mod builder;
-use git_url_parse::GitUrlParseError;
 use ::gitlab::GitlabError;
 use ::gitlab::RestError;
 use ::gitlab::api::ApiError;
 pub use builder::Builder;
 pub use builder::IssueTrackerType;
+use git_url_parse::GitUrlParseError;
 
 mod azure;
 mod demo;

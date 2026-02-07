@@ -1,6 +1,7 @@
 use git_url_parse::GitUrl;
 use std::{
-    path::{Path, PathBuf}, process::Command
+    path::{Path, PathBuf},
+    process::Command,
 };
 use tracing::info;
 
@@ -59,7 +60,9 @@ pub fn get_repo_root() -> Result<PathBuf, UpstreamError> {
     }
 
     let worktrees = String::from_utf8(worktrees_cmd.stdout)?;
-    let mut base_worktree: Result<String, UpstreamError> = Err(UpstreamError::Other("Failed to find working directory".into()));
+    let mut base_worktree: Result<String, UpstreamError> = Err(UpstreamError::Other(
+        "Failed to find working directory".into(),
+    ));
 
     for line in worktrees.lines() {
         if !line.starts_with("worktree ") {
@@ -70,8 +73,7 @@ pub fn get_repo_root() -> Result<PathBuf, UpstreamError> {
             .args(["rev-parse", "--git-dir"])
             .current_dir(path)
             .output()?;
-        let Ok(git_dir_stdout) = String::from_utf8(git_dir_cmd.stdout)
-        else {
+        let Ok(git_dir_stdout) = String::from_utf8(git_dir_cmd.stdout) else {
             continue;
         };
         let git_dir = Path::join(Path::new(path), git_dir_stdout.trim_end());
