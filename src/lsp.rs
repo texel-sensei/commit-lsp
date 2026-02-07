@@ -12,7 +12,8 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tracing::info;
 
-use crate::analysis::{self, ItemKind};
+use crate::analysis::{self, Item, ItemKind};
+use crate::git::GitAuthor;
 use crate::issue_tracker::IssueTracker;
 use crate::text_util::Ellipse as _;
 
@@ -20,6 +21,7 @@ struct Backend {
     client: Client,
     analysis: Mutex<analysis::State>,
     tracker: Option<Arc<IssueTracker>>,
+    authors: Option<Box<[GitAuthor]>>,
 }
 impl Backend {
     fn ticket_completion(&self, triggered: bool) -> Result<Option<CompletionResponse>> {
@@ -33,7 +35,11 @@ impl Backend {
                 let short_title = ticket.title().truncate_ellipse_with(20, "…");
                 CompletionItem {
                     label: format!("#{}", ticket.id()),
-                    insert_text: if triggered { None } else { Some(format!("{}", ticket.id())) },
+                    insert_text: if triggered {
+                        None
+                    } else {
+                        Some(format!("{}", ticket.id()))
+                    },
                     detail: Some(ticket.title().to_owned()),
                     kind: Some(CompletionItemKind::REFERENCE),
                     label_details: Some(CompletionItemLabelDetails {
@@ -51,6 +57,46 @@ impl Backend {
         }
 
         Ok(Some(CompletionResponse::Array(items)))
+    }
+
+    fn trailer_kind_completion(&self) -> Result<Option<CompletionResponse>> {
+        let response = CompletionResponse::Array(vec![
+            CompletionItem::new_simple("Co-authored-by: ".to_string(), String::new()),
+            CompletionItem::new_simple("Signed-off-by: ".to_string(), String::new()),
+        ]);
+
+        Ok(Some(response))
+    }
+
+    fn coauthor_completion(&self) -> Result<Option<CompletionResponse>> {
+        let Some(authors) = self.authors.as_ref() else {
+            return Ok(None);
+        };
+
+        let response = CompletionResponse::Array(
+            authors
+                .iter()
+                .enumerate()
+                .map(|(index, author)| {
+                    let label = format!("{} <{}>", author.name, author.email);
+                    let detail = format!(
+                        "{name}\n{email}\n{commit_count} commits",
+                        name = author.name,
+                        email = author.email,
+                        commit_count = author.commit_count
+                    );
+
+                    CompletionItem {
+                        label,
+                        detail: Some(detail),
+                        sort_text: Some(format!("{:032}", index)),
+                        ..CompletionItem::default()
+                    }
+                })
+                .collect(),
+        );
+
+        Ok(Some(response))
     }
 }
 
@@ -211,6 +257,12 @@ impl LanguageServer for Backend {
                     }));
                 }
             }
+            ItemKind::EmptyLine => {
+                return Ok(None);
+            }
+            ItemKind::Trailer => {
+                return Ok(None);
+            }
         }
 
         Ok(Some(Hover {
@@ -220,14 +272,14 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let analysis = self.analysis.lock().unwrap();
+
         if params.text_document_position.position.line == 0 {
-            let analysis = self.analysis.lock().unwrap();
             let trigger_character = params.context.and_then(|c| c.trigger_character);
             if trigger_character.as_ref().is_some_and(|c| c == "#") {
                 return self.ticket_completion(true);
             }
-            let items = if trigger_character.is_some_and(|c| c == "(")
-            {
+            let items = if trigger_character.is_some_and(|c| c == "(") {
                 analysis.get_commit_scopes()
             } else {
                 analysis.get_commit_types()
@@ -252,11 +304,34 @@ impl LanguageServer for Backend {
 
             return Ok(Some(CompletionResponse::Array(items)));
         }
+
+        let item = analysis.lookup(params.text_document_position.position);
+
+        if let Some(Item {
+            kind: ItemKind::Trailer,
+            ..
+        }) = item
+        {
+            return self.coauthor_completion();
+        }
+
+        if let Some(Item {
+            kind: ItemKind::EmptyLine,
+            ..
+        }) = item
+        {
+            return self.trailer_kind_completion();
+        };
+
         self.ticket_completion(false)
     }
 }
 
-pub async fn run_stdio(analysis: analysis::State, remote: Option<IssueTracker>) {
+pub async fn run_stdio(
+    analysis: analysis::State,
+    remote: Option<IssueTracker>,
+    authors: Option<Box<[GitAuthor]>>,
+) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
@@ -264,6 +339,7 @@ pub async fn run_stdio(analysis: analysis::State, remote: Option<IssueTracker>) 
         client,
         analysis: analysis.into(),
         tracker: remote.map(Arc::new),
+        authors,
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
