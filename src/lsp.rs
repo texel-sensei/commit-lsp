@@ -33,7 +33,11 @@ impl Backend {
                 let short_title = ticket.title().truncate_ellipse_with(20, "…");
                 CompletionItem {
                     label: format!("#{}", ticket.id()),
-                    insert_text: if triggered { None } else { Some(format!("{}", ticket.id())) },
+                    insert_text: if triggered {
+                        None
+                    } else {
+                        Some(format!("{}", ticket.id()))
+                    },
                     detail: Some(ticket.title().to_owned()),
                     kind: Some(CompletionItemKind::REFERENCE),
                     label_details: Some(CompletionItemLabelDetails {
@@ -226,8 +230,7 @@ impl LanguageServer for Backend {
             if trigger_character.as_ref().is_some_and(|c| c == "#") {
                 return self.ticket_completion(true);
             }
-            let items = if trigger_character.is_some_and(|c| c == "(")
-            {
+            let items = if trigger_character.is_some_and(|c| c == "(") {
                 analysis.get_commit_scopes()
             } else {
                 analysis.get_commit_types()
